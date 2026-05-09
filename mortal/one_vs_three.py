@@ -11,7 +11,14 @@ from config import config
 # mac 
 # 8场半庄全部跑完，耗时36秒，平均每场4.5秒。
 # cycles: 704 (19.513 cycle/s), actions: 5564 (154.220 action/s)
-
+# windows
+# 8场半庄全部跑完，耗时16秒，平均每场2秒。
+# cycles: 641 (39.613 cycle/s), actions: 4804 (296.884 action/s)
+# akamortal 8场半庄全部跑完，耗时7分10秒，平均每场(7*60 + 10)/8=55秒。
+# cycles: 890, actions: 5383 (12.508 action/s)
+# GPU windows
+# akamortal 8场半庄全部跑完，耗时4分31秒，平均每场(4*60 + 31)/8=33.875秒。
+# cycles: 933, actions: 4888 (17.991 action/s)
 def main():
     cfg = config['1v3']
     games_per_iter = cfg['games_per_iter']
@@ -27,7 +34,7 @@ def main():
         os.environ['AKOCHAN_DIR'] = cfg['akochan']['dir']
         os.environ['AKOCHAN_TACTICS'] = cfg['akochan']['tactics']
     else:
-        state = torch.load(cfg['champion']['state_file'], weights_only=True, map_location=torch.device('cpu'))
+        state = torch.load(cfg['champion']['state_file'], weights_only=False, map_location=torch.device('cpu'))
         cham_cfg = state['config']
         version = cham_cfg['control'].get('version', 1)
         conv_channels = cham_cfg['resnet']['conv_channels']
@@ -50,7 +57,7 @@ def main():
             name = cfg['champion']['name'],
         )
 
-    state = torch.load(cfg['challenger']['state_file'], weights_only=True, map_location=torch.device('cpu'))
+    state = torch.load(cfg['challenger']['state_file'], weights_only=False, map_location=torch.device('cpu'))
     chal_cfg = state['config']
     version = chal_cfg['control'].get('version', 1)
     conv_channels = chal_cfg['resnet']['conv_channels']

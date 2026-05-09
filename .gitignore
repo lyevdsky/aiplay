@@ -47,3 +47,4 @@ logs/
 
 model/
 libriichi.so
+libriichi.pyd

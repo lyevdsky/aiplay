@@ -103,10 +103,10 @@ force_sequential = false
 
 [1v3]
 seed_key = -1
-games_per_iter = 4
+games_per_iter = 8
 iters = 1
-#log_dir = 'log/1v3'
-log_dir = ''
+#log_dir = 'logs/1v3'
+log_dir = 'logs/1v3'
 
 [1v3.challenger]
 device = 'cpu'
