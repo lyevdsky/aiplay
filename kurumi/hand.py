@@ -1,0 +1,48 @@
+import asyncio
+import time
+
+import cv2
+import numpy as np
+from gamestate import get_gamestate
+from util import concat_images_horizontal, create_polling_sync, stable_func
+from screenshot import get_screenshot, set_screenshot
+from config import *
+from tile import predict_tile, check_tile
+
+def rec_hand():
+    img = get_screenshot()
+    x,y,w,h = HAND_FIRST_REGION
+    tiles = []
+    imgs = []
+    for i in range(13):
+        offset = i * w
+        tile_img = img[y:y + h,x + offset:x + offset + w]
+        tile = predict_tile(tile_img)
+        tiles.append(tile)
+        imgs.append(tile_img)
+    # concat_images_horizontal(imgs, 10, debug = True)
+    return tiles
+
+def rec_tsumo():
+    x,y,w,h = HAND_FIRST_REGION
+    gamestate = get_gamestate()
+    id = gamestate['player_to_id']['self']
+
+    meld_len = len(gamestate['player_info'][id]["melds"])
+    x = x + w * 13 - meld_len * 3 * w + DRAWN_GAP
+    drawn = get_screenshot((x,y,w,h))
+    # cv2.imshow('drawn', drawn)
+    # cv2.waitKey(0)
+    # cv2.destroyWindow('drawn')
+    tile = check_tile(drawn, 'self')
+    return tile
+
+
+# check_tsumo = create_polling_async( stable_func(rec_tsumo), 0.1, None)
+check_tsumo = stable_func(rec_tsumo)
+
+# set_screenshot('./screenshots/173.png')
+# rec_hand()
+
+# if __name__ == "__main__":
+#     asyncio.run(check_tsumo())

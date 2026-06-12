@@ -48,3 +48,8 @@ logs/
 model/
 libriichi.so
 libriichi.pyd
+runs/
+
+yolo/dataset
+kurumi/imgs
+kurumi/video

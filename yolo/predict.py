@@ -1,0 +1,21 @@
+# predict.py
+from ultralytics import YOLO
+import cv2
+
+model = YOLO("runs/classify/mahjong/weights/best.pt")
+
+def predict_tile(img):
+    """
+    img: OpenCV读取的图片 (numpy数组, BGR格式)
+    返回: (牌名, 置信度)
+    """
+    result = model.predict(img, verbose=False)[0]
+    top1 = result.probs.top1
+    name = result.names[top1]
+    conf = result.probs.top1conf.item()
+    return name, conf
+
+# 测试
+img = cv2.imread("test_tile.png")
+name, conf = predict_tile(img)
+print(f"识别结果: {name}  置信度: {conf:.2%}")
