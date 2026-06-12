@@ -3,7 +3,7 @@ import shutil
 from pathlib import Path
 
 # 配置
-SRC_DIR = Path("./ref")   # 改成你的原始图片文件夹路径
+SRC_DIR = Path("./kurumi/ref")   # 改成你的原始图片文件夹路径
 TRAIN_DIR = Path("./yolo/dataset/train")
 
 
