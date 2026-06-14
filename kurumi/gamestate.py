@@ -41,8 +41,13 @@ gamestate = {
     ],
 }
 
+def set_gamestate(state):
+    for key, value in state.items():
+        gamestate[key] = value
+
 def get_gamestate():
     return gamestate
+
 
 def get_playerinfo(player):
     return gamestate['player_info'][player]

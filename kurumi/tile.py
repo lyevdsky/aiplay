@@ -10,7 +10,8 @@ def get_model():
     global model
     if model is None:
         from ultralytics import YOLO
-        model = YOLO("/Users/weilong/code/mjai/mahjong-game/runs/classify/mahjong/weights/best.pt")
+        # model = YOLO("/Users/weilong/code/mjai/mahjong-game/runs/classify/mahjong/weights/best.pt")
+        model = YOLO("./ref/yolo/best.pt")
     return model
     
 def predict_tile(img, threshold = 0.8, debug=False):
@@ -70,11 +71,14 @@ def normalize_direction(tileimg, player):
     
     return tileimg, direction
 
-def check_tile(img, player = 'self', min_area=800, threshold=0.8, return_dict = False, debug=False):
-    cs = find_contour(img, TILE_WHILE_HSV, min_area)
+def check_tile(img, player = 'self', min_area=1500, threshold=0.8, return_dict = False, debug=False):
+    # 先找亮白，再尝试模切的灰白。避免找的牌面矩形不对，导致normalize_direction判断有误
+    cs = find_contour(img, WHILE_HSV, min_area)
     if len(cs) == 0:
-        return None
-    
+        cs = find_contour(img, TILE_WHILE_HSV, min_area)
+        if len(cs) == 0:
+            return None
+
     x,y,w,h = cv2.boundingRect(cs[0])
     tileimg = img[y:y+h,x:x+w]
 
@@ -83,8 +87,8 @@ def check_tile(img, player = 'self', min_area=800, threshold=0.8, return_dict = 
         cv2.imshow('check_tile', normalized_img)
         cv2.waitKey(0)
         cv2.destroyWindow('check_tile')
-    tile = predict_tile(normalized_img, threshold, debug=debug)
 
+    tile = predict_tile(normalized_img, threshold, debug=debug)
     if tile is None:
         return None
 
@@ -98,7 +102,7 @@ def check_tile(img, player = 'self', min_area=800, threshold=0.8, return_dict = 
 
     return tile
 
-def check_tiles(img, player = 'self', min_area=800, threshold=0.8, debug=False):
+def check_tiles(img, player = 'self', min_area=1500, threshold=0.8, debug=False):
     cs = find_contour(img, WHILE_HSV, min_area)
 
     result = []
@@ -112,7 +116,7 @@ def check_tiles(img, player = 'self', min_area=800, threshold=0.8, debug=False):
             cv2.waitKey(0)
             cv2.destroyWindow('check_tile')
 
-        tile = predict_tile(normalized_img, threshold)
+        tile = predict_tile(normalized_img, threshold, debug=debug)
 
         if tile is not None:
             result.append({

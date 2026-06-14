@@ -38,11 +38,7 @@ def rec_tsumo():
     return tile
 
 
-# check_tsumo = create_polling_async( stable_func(rec_tsumo), 0.1, None)
 check_tsumo = stable_func(rec_tsumo)
 
 # set_screenshot('./screenshots/173.png')
 # rec_hand()
-
-# if __name__ == "__main__":
-#     asyncio.run(check_tsumo())

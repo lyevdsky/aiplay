@@ -3,9 +3,12 @@ import numpy as np
 import tkinter as tk
 from tkinter import ttk
 
-img = cv2.imread("./imgs/yolo_error_1m_2.png")
+img = cv2.imread("./imgs/active_bar_2.png")
 
 hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+# mask = cv2.inRange(hsv, (20, 100, 220), (35, 255, 255))
+# result = cv2.bitwise_and(img, img, mask=mask)
+# cv2.imwrite('hora.png', result)
 
 root = tk.Tk()
 root.title("HSV Tuner")

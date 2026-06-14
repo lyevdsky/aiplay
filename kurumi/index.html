@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<body>
+<table id="t" border="1" style="font-size:24px"></table>
+<script>
+const ws = new WebSocket("ws://localhost:5500/ws");
+ws.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    const t = document.getElementById("t");
+    console.log(data)
+    let values = []
+    if (data.type !== 'none') {
+        values = data.values
+        t.innerHTML = values.map(v => `<tr><td>${v.label}</td><td>${v.q_value}</td></tr>`)
+                .join("")
+
+    } else {
+        t.innerHTML =  '<tr><td>None</td><td></td></tr>'
+    }
+    
+};
+</script>
+</body>
+</html>

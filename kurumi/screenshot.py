@@ -1,5 +1,5 @@
 import os
-
+import time
 import cv2
 from collections import deque
 from datetime import datetime
@@ -47,13 +47,13 @@ def screenshot():
     return img
 
 def set_screenshot(paths):
+    print('set_screenshot: ', paths)
     if isinstance(paths, list):
         for path in paths:
             test_screenshots.append(cv2.imread(path))
     elif isinstance(paths, str):
         img = cv2.imread(paths)
         test_screenshots.append(img)
-import time
 
 def get_screenshot(region = None, cache_ms=200):
     # 使用函数属性保存缓存状态（也可以使用全局变量，但属性更整洁）
@@ -77,7 +77,7 @@ def get_screenshot(region = None, cache_ms=200):
             img = shot.copy()
             cv2.rectangle(img, (x, y), (x + w, y+h), (0,0,255), 1)
             cv2.imshow('get_screenshot', img)
-            cv2.waitKey(10)
+            cv2.waitKey(1)
 
         return shot[y:y+h,x:x+w]
 
@@ -98,6 +98,7 @@ def save_img_q():
 
     print(f"共保存 {idx} 张图片到文件夹 {folder_name}")
 
+# screenshot()
 # for i in range(100):
 #     img = video_capture()
 #     img_with_border = cv2.copyMakeBorder(img, 8, 0, 0, 0,

@@ -5,7 +5,7 @@ import numpy as np
 from gamestate import get_gamestate
 from screenshot import get_screenshot, set_screenshot
 from tile import check_tiles
-from util import find_contour
+from util import stable_func
 from config import TILE_WHILE_HSV, WHILE_HSV
 
 SELF_POINTS = [(2370, 1320), (2276, 1320)]
@@ -126,10 +126,10 @@ def rec_kakan():
 def rec_new_meld():
     player, melds = get_current_player_info()
     # melds = [{ 'type': 'chi'}, { 'type': 'pon' }, { 'type': 'chi' }]
-    # melds = [{ 'type': 'chi'}, { 'type': 'daiminkan' }]
+    # melds = [{ 'type': 'pon'}, { 'type': 'ankan' }, {'type': 'pon'}]
     # melds = [{ 'type': 'chi'}]
-    # melds = []
-    # player = 'across'
+    melds = []
+    player = 'across'
     x,y,w,h = get_meld_region(player, melds, len(melds))
     img = get_screenshot((x,y,w,h))
     # y+=17
@@ -138,7 +138,7 @@ def rec_new_meld():
     # cv2.imshow('shot', shot)
     # cv2.waitKey(0)
 
-    result = check_tiles(img, player, debug=False)
+    result = check_tiles(img, player, debug=True)
     # print(result)
     if len(result) == 2:
         # 暗杠应该是识别不出红5的
@@ -176,15 +176,19 @@ def rec_new_meld():
     print(f'check {player} meld result: ', meld)
     return meld
 
-# set_screenshot('./imgs/237.webp')
-# set_screenshot('./imgs/meld02.png')
+for i in range(10):
+    print(i)
+    set_screenshot(f'./logs/20260614_194554/000{i}.jpg')
+    rec_new_meld()
+
+# set_screenshot('./logs/20260614_194554/0009.jpg')
 # rec_new_meld()
 
 def check_new_meld():
     count = 0
-
+    stabled_rec_new_meld = stable_func(rec_new_meld)
     while count < 10:
-        meld = rec_new_meld()
+        meld = stabled_rec_new_meld()
         if meld is not None:
             return meld
         time.sleep(0.5)
@@ -192,6 +196,7 @@ def check_new_meld():
     else:
         raise RuntimeError('未识别出新的副露')
 
+#TODO 这里也要增加stable_func
 def check_kan():
     kakan_meld = rec_kakan()
     if kakan_meld is not None:

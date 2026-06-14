@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import math
 from gamestate import get_gamestate
-from screenshot import get_screenshot
+from screenshot import get_screenshot, set_screenshot
 from util import concat_images_horizontal, find_contour, stable_func
 from config import *
 from tile import check_tile
@@ -56,9 +56,9 @@ def rec_dahai(player, pos, riichi_index):
         w = w + 30
     else:
         h = h + 30
-    # 1612 433 104 78
+
     img = get_screenshot((x,y,w,h))
-    result = check_tile(img, player, return_dict=True)
+    result = check_tile(img, player, return_dict=True, debug=False)
     if result is None:
         return None
     
@@ -66,7 +66,7 @@ def rec_dahai(player, pos, riichi_index):
     tileimg = img[y:y+h,x:x+w]
 
     # 判断tsumogiri
-    cs = find_contour(tileimg, WHILE_HSV, 100)
+    cs = find_contour(tileimg, WHILE_HSV, 300)
     tsumogiri = len(cs) == 0
 
     riichi = False
@@ -81,7 +81,6 @@ def rec_dahai(player, pos, riichi_index):
         riichi = True
 
     return result['tile'], tsumogiri, riichi
-
 
 def crop_kawa_all_tiles(player):
     # screenshot = cv2.imread('./imgs/riichi/0.png')
@@ -123,3 +122,7 @@ def check_dahai_claimed():
     result = rec_dahai(player_pos, player_info['kawa_index'], player_info['riichi_index'])
     print('check_dahai_claimed: ', result is None)
     return result is None
+
+
+# set_screenshot('./imgs/yolo_error_1m.jpg')
+# rec_dahai('prev', 11, None)

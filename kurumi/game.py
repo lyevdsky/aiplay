@@ -3,9 +3,8 @@ import json
 import time
 
 from screenshot import get_screenshot, save_img_q
-from kyoku import rec_kyoku_info, check_player_change, check_new_dora
-# from meld import get_new_meld, check_kakan
-from gamestate import get_gamestate, init_gamestate
+from kyoku import rec_kyoku_info, check_player_change, check_new_dora_marker
+from gamestate import get_gamestate, init_gamestate, set_gamestate
 from hand import rec_hand, check_tsumo
 from kawa import check_dahai, check_dahai_claimed
 from meld import check_new_meld, check_kan
@@ -13,36 +12,52 @@ from hora import check_hora
 from util import polling
 from config import POLLING_INTERVAL
 from enum import Enum
+from pynput import keyboard
+from mortal.bot import Bot
+from kurumi.mortal.conv import format_output
 
 class Phase(Enum):
+    StartKyoku = 0
     Dahai = 1
     Tsumo = 2
     Claim = 3
     Hora = 4
 
-# next meld 不断增加
-# yolo 0m
+# TODO
+# hora 判断
+# 流局 判断
+# settle
+# kyotaku bang
+# ankan 8p
 
 def print_with_color(text, color = 'green'):
     if color == 'green':
         print(f'\033[32m [GAME] {text} \033[0m')
     elif color == 'red':
         print(f"\033[31m [GAME] {text} \033[0m")
+    elif color == 'blue':
+        print(f"\033[34m [AI] {text} \033[0m")
 
 print_with_color('正在识别牌局信息...')
 class Game:
-    def __init__(self):
+    def __init__(self, listener = None):
         init_gamestate()
         self.state = get_gamestate()
-        self.my_id = 0
         self.mjai = []
         self.last_dahai = None
         self.last_player = None
         self.riichi_to_accepted = None
         self.need_open_dora = 0
-        self.phase = Phase.Tsumo
+        self.phase = Phase.StartKyoku
         self.remaining_tsumo = 70
-        
+        self.bot = Bot()
+        print(self.bot)
+        self.listener = listener
+
+    def start_with_state(self, state):
+        set_gamestate(state)
+
+
     def start_kyoku(self):
         print("Starting new kyoku...")
         init_gamestate()
@@ -78,7 +93,6 @@ class Game:
         state['player_to_id'] = player_to_id
         state['position'] = position
         state['my_id'] = player_to_id['self']
-        self.my_id = state['my_id']
 
         id_to_score = {
             player_to_id[player]: score
@@ -88,7 +102,7 @@ class Game:
 
         hands = rec_hand()
         tehais = [['?']* 13, ['?']* 13, ['?']* 13, ['?']* 13]
-        tehais[self.my_id] = hands 
+        tehais[state['my_id']] = hands 
         self.notify({
             'type': 'start_kyoku',
             'bakaze': state['bakaze'],
@@ -107,7 +121,7 @@ class Game:
         self.notify({
             'type': 'tsumo',
             'actor': player,
-            'tile': tile,
+            'pai': tile,
         })
     
     def dahai(self, player, tile, tsumogiri, riichi):
@@ -203,14 +217,16 @@ class Game:
             print_with_color(f'player {player} {type} < {pai} >')
 
     def open_dora(self):
-        dora_marker = polling(check_new_dora, POLLING_INTERVAL, timeout = 5)
+        dora_marker = polling(check_new_dora_marker, POLLING_INTERVAL, timeout = 5)
+        self.state['dora_markers'].append(dora_marker)
+        print_with_color(f'新宝牌指示牌 < {dora_marker} >')
         self.notify({
             'type': 'dora',
             'dora_marker': dora_marker
         })
         self.need_open_dora = False
 
-    async def main(self):
+    def main(self):
         # check current_player kakan ankan dahai hora
         def check_dahai_phase():
             player = state['current_player']
@@ -222,7 +238,7 @@ class Game:
             meld = check_kan()
             if meld is not None:
                 self.claim(player, meld)
-                return 'kan'
+                return meld['type']
 
             # 自摸check
             res = check_dahai()
@@ -246,11 +262,12 @@ class Game:
             return None
         
         state = self.state
-        self.start_kyoku()
+
         while True:
             player = state['current_player']
+
             if self.phase == Phase.Tsumo:
-                if player == self.my_id:
+                if player == state['my_id']:
                     tile = polling(check_tsumo, POLLING_INTERVAL, timeout = 10)
                 else:
                     tile = '?'
@@ -282,6 +299,7 @@ class Game:
                 # player change / hora
                 playerOrHora = polling(check_claim_phase, POLLING_INTERVAL, timeout=30)
                 if playerOrHora == 'hora':
+                    self.phase = Phase.Hora
                     continue
                 else:
                     player = playerOrHora
@@ -310,14 +328,34 @@ class Game:
                     self.state['player_info'][self.last_player]['kawa_index'] += 1
                     self.phase = Phase.Tsumo
 
+            elif self.phase == Phase.StartKyoku:
+                self.start_kyoku()
+                
+                self.phase = Phase.Tsumo
+
             elif self.phase == Phase.Hora:
+                save_img_q()
                 break
-        
+
         self.print_mjai()
+
         return
     
     def notify(self, message):
         self.mjai.append(message)
+        if message['type'] == 'start_kyoku':
+            self.bot.start(self.state['my_id'])
+        elif message['type'] == 'end_kyoku':
+            self.bot.end()
+
+        react = self.bot.react(message)
+        if 'error' in react:
+            raise RuntimeError('AI React Error', react['error'])
+        
+        if self.listener is not None:
+            self.listener(react)
+
+        print_with_color(react, 'blue')
         return
 
     def print_mjai(self):
@@ -326,40 +364,29 @@ class Game:
             str = json.dumps(e)
             print(str)
 
-    # None = 'none',
-    # StartGame = 'start_game',
-    # StartKyoku = 'start_kyoku',
-    # Tsumo = 'tsumo',
-    # Dahai = 'dahai',
-    # Chi = 'chi',
-    # Pon = 'pon',
-    # Daiminkan = 'daiminkan',
-    # Kakan = 'kakan',
-    # Ankan = 'ankan',
-    # Dora = 'dora',
-    # Reach = 'reach',
-    # ReachAccepted = 'reach_accepted',
-    # Hora = 'hora',
-    # Ryukyoku = 'ryukyoku',
-    # EndKyoku = 'end_kyoku',
-    # EndGame = 'end_game'
+def on_press(key):
+    if key == keyboard.Key.f1:
+        print_with_color('按下了F1，保存最近截图', 'red')
+        # 这里可以放置你的 F1 功能逻辑
+        save_img_q()
 
+listener = keyboard.Listener(on_press=on_press)
+listener.start()
+
+# _state3 = {'honba': '', 'kyotaku': '', 'bakaze': 'E', 'kyoku': 4, 'dora_markers': ['1p'], 'scores': ['11300', '21000', '7', '33700'], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 3, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 0, 'player_info': [{'kawa_index': 13, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 12, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 13, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['2p', '2p'], 'tile': '2p'}, {'type': 'ankan'}]}, {'kawa_index': 14, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['0m', '5m'], 'tile': '5m'}, {'type': 'ankan'}, {'type': 'pon', 'consumed': ['8p', '8p'], 'tile': '8p'}]}], 'my_id': 2}
+# _state2 = {'honba': '', 'kyotaku': '', 'bakaze': 'E', 'kyoku': 4, 'dora_markers': ['1p'], 'scores': ['11300', '21000', '7', '33700'], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 0, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 0, 'player_info': [{'kawa_index': 12, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 11, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 12, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['2p', '2p'], 'tile': '2p'}, {'type': 'ankan'}]}, {'kawa_index': 14, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['0m', '5m'], 'tile': '5m'}, {'type': 'ankan'}, {'type': 'pon', 'consumed': ['8p', '8p'], 'tile': '8p'}]}], 'my_id': 2}
+# _state = {'honba': '', 'kyotaku': '', 'bakaze': 'E', 'kyoku': 4, 'dora_markers': ['1p'], 'scores': ['11300', '21000', '7', '33700'], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 2, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 0, 'player_info': [{'kawa_index': 4, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 4, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 3, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['2p', '2p'], 'tile': '2p'}]}, {'kawa_index': 4, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['0m', '5m'], 'tile': '5m'}]}], 'my_id': 2}
 if __name__ == "__main__":
     try:
         game = Game()
+        # game.start_with_state(_state3)
+        # game.phase = Phase.Tsumo
         asyncio.run(game.main())
-    # except RuntimeError as e:
     except Exception as e:
         save_img_q()
+        print_with_color('游戏中止，打印中止时的GAME STATE', 'red')
+        print(game.state)
         raise e
     except KeyboardInterrupt:
         print_with_color('游戏中止，打印中止时的GAME STATE', 'red')
         print(game.state)
-
-
-# a = Game()
-# print(a.state)
-
-# a.claim(1, { 'tile': '4p', 'type': 'ankan'})
-
-# print(a.state)

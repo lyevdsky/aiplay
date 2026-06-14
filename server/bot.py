@@ -15,6 +15,7 @@ def end():
     global bot
     bot = None
 
+# 每次一个事件
 def react(event):
     global bot
     try:

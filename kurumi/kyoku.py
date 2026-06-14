@@ -11,16 +11,14 @@ from tile import predict_tile
 def get_honba(screenshot):
     x,y,w,h = HONBA_REGION
     honba_img = screenshot[y:y+h, x:x+w]
-    # cv2.imshow('honba_img', honba_img)
-    # cv2.waitKey(0)
-    _img = to_black_on_white(honba_img)
-    return ocr_digits(_img)
+    res = ocr_digits(honba_img)
+    return res
 
 def get_kyotaku(screenshot):
     x,y,w,h = KYOTAKU_REGION
     kyotaku_img = screenshot[y:y+h, x:x+w]
-    _img = to_black_on_white(kyotaku_img)
-    return ocr_digits(_img)
+    res = ocr_digits(kyotaku_img)
+    return res
 
 def get_kyoku(screenshot):
     bakazeE = cv2.imread('./ref/kyoku/bakaze_e.png')
@@ -36,13 +34,13 @@ def get_kyoku(screenshot):
 
     if has_template(bakaze_img, bakazeE, hsv = BAKAZE_HSV):
         bakaze = 'E'
-    elif has_template(bakaze_img, bakazeS):
+    elif has_template(bakaze_img, bakazeS, hsv = BAKAZE_HSV):
         bakaze = 'S'
     else:
         bakaze = 'W'
     if has_template(kyokunum_img, kyoku4, hsv = BAKAZE_HSV):
         kyokunum = 4
-    elif has_template(kyokunum_img, kyoku3):
+    elif has_template(kyokunum_img, kyoku3, hsv = BAKAZE_HSV):
         kyokunum = 3
     elif has_template(kyokunum_img, kyoku2, hsv = BAKAZE_HSV):
         kyokunum = 2
@@ -59,7 +57,6 @@ def get_kyoku(screenshot):
     # cv2.imshow('cropped_kyokunum', cropped_kyokunum)
     # cv2.imwrite('./ref/kyokunum1.png', cropped_kyokunum)
     # cv2.waitKey(0)
-    print(bakaze, kyokunum)
     return bakaze, kyokunum
 
 def get_oya(screenshot):
@@ -73,7 +70,6 @@ def get_oya(screenshot):
     else:
         oya = 'across' if y < 100 else 'next'
     
-    print('oya: ', oya)
     return oya
 
 def get_dora_marker(screenshot, index = 0):
@@ -101,7 +97,6 @@ def get_scores(screenshot):
     # cv2.imshow('across_score', across_score)
     # cv2.imshow('prev_score', prev_score)
     # cv2.waitKey(0)
-    print('scores start from self:', res1, res2,res3,res4)
     return [res1, res2, res3, res4]
 
 def rec_kyoku_info():
@@ -113,7 +108,7 @@ def rec_kyoku_info():
     kyoku_info['bakaze'], kyoku_info['kyokunum'] = get_kyoku(screenshot)
     kyoku_info['dora_marker'] = get_dora_marker(screenshot, index=0)
     kyoku_info['scores'] = get_scores(screenshot)
-
+    print('kyoku info: ', kyoku_info)
     return kyoku_info
 
 def get_active_player():
@@ -128,11 +123,19 @@ def get_active_player():
     for p, region in regions.items():
         x,y,w,h = region
         region_img = shot[y:y+h,x:x+w]
-        gray = cv2.cvtColor(region_img, cv2.COLOR_BGR2GRAY)
-        active = np.sum(gray > ACTIVE_MIN_VALUE) > 300
+        hsv = cv2.cvtColor(region_img, cv2.COLOR_BGR2HSV)
+        mask = cv2.inRange(hsv, ACTIVE_HSV[0], ACTIVE_HSV[1])
+        # cv2.imshow('mask', mask)
+        # cv2.waitKey(0)
+        active = cv2.countNonZero(mask) / (w * h) > 0.9
         if active:
             return p
 
+stabled_get_dora_marker = stable_func(get_dora_marker)
+def check_new_dora_marker():
+    screenshot = get_screenshot()
+    gamestate = get_gamestate()
+    return stabled_get_dora_marker(screenshot, len(gamestate['dora_markers']))
 
 # player change 和 hora要同时check，所以这里不使用while True阻塞
 def _check_player_change():
@@ -145,7 +148,7 @@ def _check_player_change():
             print('player change to: ', p)
             return pid
     return None
-        
+
 check_player_change = stable_func(_check_player_change)
 
 # async def check_player_change():
@@ -168,7 +171,6 @@ check_player_change = stable_func(_check_player_change)
 #     except asyncio.TimeoutError:
 #         return None
 
-check_new_dora = stable_func(get_dora_marker)
 
 # def check_new_dora():
 #     stabled_get_dora_marker = stable_func(get_dora_marker)
@@ -178,8 +180,12 @@ check_new_dora = stable_func(get_dora_marker)
 # if __name__ == "__main__":
 #     asyncio.run(check_player_change())
 
-# set_screenshot('./imgs/')
-# rec_kyoku_info(screenshot)
+# set_screenshot('./imgs/error_kyotaku.png')
+# res = get_active_player()
+# print(res)
+
+# rec_kyoku_info()
+# cv2.waitKey(0)
 # get_dora(screenshot, 3)
 # get_scores(screenshot)
 # res = rec_kyoku_info(screenshot)

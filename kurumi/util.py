@@ -5,6 +5,16 @@ import cv2
 import numpy as np
 import pytesseract
 import asyncio
+import ddddocr
+
+ocr = ddddocr.DdddOcr(show_ad=False)
+def ocr_digits(roi):
+    _, encoded = cv2.imencode('.png', roi)
+    result = ocr.classification(encoded.tobytes())
+    result = result.replace('o', '0').replace('O', '0').replace('l', '1').replace('I', '1')
+    digits = ''.join(c for c in result if c.isdigit())
+    return int(digits) if digits.isdigit() else digits
+
 def compute_mask_ratios(img, hsv):
     _hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     mask = cv2.inRange(_hsv, hsv[0], hsv[1])
@@ -48,15 +58,15 @@ def filter_cyan(img, hsv):
     return mask
 
 def has_template(image, template, threshold=0.7, hsv = None, debug = False):
-    mask = None
-    method = cv2.TM_CCOEFF_NORMED
     if hsv is not None:
         image = filter_cyan(image, hsv)
         template = filter_cyan(template, hsv)
-        mask = template
         method = cv2.TM_CCORR_NORMED
+        result = cv2.matchTemplate(image, template, method)
+    else:
+        method = cv2.TM_CCOEFF_NORMED
+        result = cv2.matchTemplate(image, template, method)
 
-    result = cv2.matchTemplate(image, template, method, mask=mask)
     _, max_val, _, _ = cv2.minMaxLoc(result)
 
     if debug:
@@ -81,7 +91,10 @@ def to_black_on_white(roi):
 
     return binary
 
-def ocr_digits(roi, min_area=100, debug = False):
+
+i = 0
+def ocr_digits2(roi, min_area=100, debug = False):
+    global i
     roi = cv2.resize(roi, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
     # 如果已经是灰度图就不用转换
     if len(roi.shape) == 3:
@@ -96,17 +109,22 @@ def ocr_digits(roi, min_area=100, debug = False):
     num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(inverted, connectivity=8)
     
     clean = np.zeros_like(binary)
-    for i in range(1, num_labels):  # 0是背景跳过
+    for label in range(1, num_labels):  # 0是背景跳过
         if stats[i, cv2.CC_STAT_AREA] >= min_area:
-            clean[labels == i] = 255
+            clean[labels == label] = 255
 
     # 再反转回白底黑字给Tesseract
     result = cv2.bitwise_not(clean)
     if debug:
-        cv2.imshow('ocr', result)
+        cv2.imshow(f'ocr {i}', result)
+        i += 1
         cv2.waitKey(0)
-    config = "--psm 7 -c tessedit_char_whitelist=0123456789"
-    return pytesseract.image_to_string(result, config=config).strip()
+
+    config = "--psm 13 -c tessedit_char_whitelist=0123456789"
+
+    numstr = pytesseract.image_to_string(result, config=config).strip()
+
+    return int(numstr) if numstr.isdigit() else numstr
 
 
 def concat_images_horizontal(images, gap=10, bg_color=(255,255,255), debug = False):
@@ -278,3 +296,10 @@ def create_polling_async(
         )
     
     return polling_func
+
+
+# img = cv2.imread('./imgs/kyokunum_1.png')
+# cropped = crop_min_rect(img, [(0, 0, 130), (180, 255, 255)])
+# cv2.imshow('cropped', cropped)
+# cv2.imwrite('cropped.png', cropped)
+# cv2.waitKey(0)
