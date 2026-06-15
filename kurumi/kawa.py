@@ -59,7 +59,7 @@ def rec_dahai(player, pos, riichi_index):
         h = h + 30
 
     img = get_screenshot((x,y,w,h))
-    result = check_tile(img, player, return_dict=True, debug=True)
+    result = check_tile(img, player, return_dict=True, debug=False)
     if result is None:
         return None
     
@@ -125,10 +125,10 @@ def check_dahai_claimed():
     return result is None
 
 
-set_screenshot('./imgs/error/tenpai.png')
-res = rec_dahai('self', 13, None)
-print(res)
-print(rec_tsumo())
-if rec_tsumo() is not None:
-    res = None
-print(res)
+# set_screenshot('./imgs/error/tenpai.png')
+# res = rec_dahai('self', 13, None)
+# print(res)
+# print(rec_tsumo())
+# if rec_tsumo() is not None:
+#     res = None
+# print(res)

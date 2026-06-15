@@ -4,6 +4,12 @@ import cv2
 from collections import deque
 from datetime import datetime
 from pynput import keyboard
+import dxcam
+
+camera = dxcam.create(output_color="BGR")
+frame = camera.get_latest_frame() 
+region = (0, 0, 2560, 1440)
+camera.start(target_fps=60)
 
 SHOW_SCREENSHOW = True
 img_q = deque(maxlen=10)
@@ -18,16 +24,17 @@ fps = cap.get(cv2.CAP_PROP_FPS)
 duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps   # 视频总时长（秒）
 
 def video_capture():
-    video_start_ms = 174000
+    # video_start_ms = 174000
+    video_start_ms = 0
 
     if not hasattr(video_capture, '_count'):
         video_capture._count = 0
         video_capture._start_time = time.time()
-    if True:
+    if False:
         ms = video_start_ms + video_capture._count * 50
         video_capture._count += 1
     else:
-        ratio = 0.2
+        ratio = 0.8
         now = time.time()
         ms = round((now - video_capture._start_time) * 1000 * ratio)
 
@@ -52,7 +59,9 @@ def video_capture():
 #     return img
 
 def capture():
-    return video_capture()
+    frame = camera.get_latest_frame()
+    # return video_capture()
+    return frame
 
 def set_screenshot(path):
     img = cv2.imread(path)
@@ -80,6 +89,7 @@ def get_screenshot(region = None, cache_ms=50):
         if SHOW_SCREENSHOW:
             img = shot.copy()
             cv2.rectangle(img, (x, y), (x + w, y+h), (0,0,255), 1)
+            cv2.namedWindow("get_screenshot", cv2.WINDOW_NORMAL)
             cv2.imshow('get_screenshot', img)
             cv2.waitKey(1)
 

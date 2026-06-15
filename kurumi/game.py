@@ -1,3 +1,5 @@
+import warnings
+warnings.filterwarnings("ignore")
 import asyncio
 import json
 import time
@@ -24,12 +26,16 @@ class Phase(Enum):
     Hora = 4
 
 # TODO
-# hora 判断
 # 流局 判断
 # settle
-# kyotaku bang
-# ankan 8p
-
+# ai reach dahai
+#  ai print less
+# new kyoku gameloop
+# 听牌提示 认为打牌问题
+# 打牌太快问题。
+# ui
+# 杠 哪个问题
+# 
 def print_with_color(text, color = 'green'):
     if color == 'green':
         print(f'\033[32m [GAME] {text} \033[0m')
