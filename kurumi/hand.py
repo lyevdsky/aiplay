@@ -30,7 +30,7 @@ def rec_tsumo():
 
     meld_len = len(gamestate['player_info'][id]["melds"])
     x = x + w * 13 - meld_len * 3 * w + DRAWN_GAP
-    drawn = get_screenshot((x,y,w,h))
+    drawn = get_screenshot((x, y - 90, w, h + 90)) # 这里增加识别区的高度，是因为有可能鼠标hover时，牌上浮导致识别不到。
     # cv2.imshow('drawn', drawn)
     # cv2.waitKey(0)
     # cv2.destroyWindow('drawn')

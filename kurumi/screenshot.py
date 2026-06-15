@@ -7,68 +7,72 @@ from pynput import keyboard
 
 SHOW_SCREENSHOW = True
 img_q = deque(maxlen=10)
-test_screenshots = []
+screenshot = {
+    'img': None,
+    'time': 0
+}
 
-cap = cv2.VideoCapture("./video/meld_next_ankan.mp4")
+cap = cv2.VideoCapture("./video/full.mp4")
 # cap = cv2.VideoCapture("./video/meld_self_kakan.mp4")
 fps = cap.get(cv2.CAP_PROP_FPS)
 duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps   # 视频总时长（秒）
-t = -1
-video_start_s = 0
-# 105950
-def video_capture(s = None):
-    global t
-    t += 1
-    ms = video_start_s + t * 50 if s is None else s * 1000
-    cap.set(cv2.CAP_PROP_POS_MSEC, ms)   # 跳转到 t 秒（毫秒）
+
+def video_capture():
+    video_start_ms = 174000
+
+    if not hasattr(video_capture, '_count'):
+        video_capture._count = 0
+        video_capture._start_time = time.time()
+    if True:
+        ms = video_start_ms + video_capture._count * 50
+        video_capture._count += 1
+    else:
+        ratio = 0.2
+        now = time.time()
+        ms = round((now - video_capture._start_time) * 1000 * ratio)
+
+    cap.set(cv2.CAP_PROP_POS_MSEC, ms)   # 跳转到 ms 毫秒
     ret, frame = cap.read()
     if ret:
-        # 顶部填充8像素宽
-        # img = cv2.copyMakeBorder(frame, 8, 0, 0, 0,
-        # cv2.BORDER_CONSTANT, value=(255,255,255))
-        img = frame
-        # 处理 frame
-        return img
+        return frame
     return False
 
-# img = video_capture(105.950)
-# cv2.imwrite('yolo_error_1m_2.png', img)
-
-def screenshot():
-    global t
-    if len(test_screenshots) > 0:
-        t = t + 1 if t < len(test_screenshots) - 1 else len(test_screenshots) - 1
-        return test_screenshots[t]
+# img = video_capture()
+# cv2.imwrite('tenpai.png', img)
+# def screenshot():
+#     global t
+#     if len(test_screenshots) > 0:
+#         t = t + 1 if t < len(test_screenshots) - 1 else len(test_screenshots) - 1
+#         return test_screenshots[t]
     
-    t += 1
-    img = video_capture()
-    # img = cv2.imread(f'./screenshots/{t}.png')
-    img_q.append(img)
-    return img
+#     t += 1
+#     img = video_capture()
+#     # img = cv2.imread(f'./screenshots/{t}.png')
+#     img_q.append(img)
+#     return img
 
-def set_screenshot(paths):
-    print('set_screenshot: ', paths)
-    if isinstance(paths, list):
-        for path in paths:
-            test_screenshots.append(cv2.imread(path))
-    elif isinstance(paths, str):
-        img = cv2.imread(paths)
-        test_screenshots.append(img)
+def capture():
+    return video_capture()
 
-def get_screenshot(region = None, cache_ms=200):
-    # 使用函数属性保存缓存状态（也可以使用全局变量，但属性更整洁）
-    if not hasattr(get_screenshot, "_last_screenshot"):
-        get_screenshot._last_screenshot = None
-        get_screenshot._last_time = 0.0
+def set_screenshot(path):
+    img = cv2.imread(path)
+    screenshot['img'] = img
+    screenshot['time'] = 10**18
 
+def get_screenshot(region = None, cache_ms=50):
     now = time.time()
+
     # 检查是否有有效缓存
     if (cache_ms is not None and
-        get_screenshot._last_screenshot is not None and 
-        (now - get_screenshot._last_time) * 1000 < cache_ms):
-        shot = get_screenshot._last_screenshot
+        screenshot['img'] is not None and 
+        (now - screenshot['time']) * 1000 < cache_ms):
+        shot = screenshot['img']
     else:
-        shot = screenshot()
+        screenshot['img'] = capture()
+        screenshot['time'] = now
+        shot = screenshot['img']
+
+    img_q.append(shot)
 
     if region is not None:
         x,y,w,h = region

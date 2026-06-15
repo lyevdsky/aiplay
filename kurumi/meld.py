@@ -19,8 +19,8 @@ ACROSS_POINTS = [(495, 30), (562, 30)]
 ACROSS_NUM = [0, 1]
 
 REC_PREV_W_H = (200, 250) # w h
-REC_SELF_W_H = (320, 150)
-
+REC_SELF_W_H = (400, 150)
+# TODO self 对自己的暗杠，明杠，判断，区间不够大
 def computed_next_point(player, melds):
     a = 0
     b = 0
@@ -128,24 +128,25 @@ def rec_new_meld():
     # melds = [{ 'type': 'chi'}, { 'type': 'pon' }, { 'type': 'chi' }]
     # melds = [{ 'type': 'pon'}, { 'type': 'ankan' }, {'type': 'pon'}]
     # melds = [{ 'type': 'chi'}]
-    melds = []
-    player = 'across'
+    # melds = []
+    # player = 'self'
     x,y,w,h = get_meld_region(player, melds, len(melds))
     img = get_screenshot((x,y,w,h))
-    # y+=17
-    # print(x,y,w,h)
-    # cv2.rectangle(shot, (x,y), (x+w,y+h), (0, 255,0), 1)
-    # cv2.imshow('shot', shot)
-    # cv2.waitKey(0)
 
-    result = check_tiles(img, player, debug=True)
+    result = check_tiles(img, player, debug=False)
     # print(result)
+    meld = None
     if len(result) == 2:
-        # 暗杠应该是识别不出红5的
-        meld = {
-            'tile': result[0]['tile'],
-            'type': 'ankan'
-        }
+        if result[0]['tile'] == result[1]['tile']:
+            x1,y1,w1,h1 = result[0]['region']
+            x2,y2,w2,h2 = result[1]['region']
+            # 两种牌必须相邻，避免检测到自己手牌两种相同的牌就认为是ankan
+            if (abs(x1 + w1 - x2) < 10 or abs(x2 + w2 - x1) < 10):
+                # 暗杠应该是识别不出红5的
+                meld = {
+                    'tile': result[0]['tile'],
+                    'type': 'ankan'
+                }
     elif len(result) == 4:
         meld = {
             'type': 'daiminkan'
@@ -170,24 +171,23 @@ def rec_new_meld():
                 'consumed': consumed,
                 'tile': tile
             }
-    else:
-        meld = None
     
-    print(f'check {player} meld result: ', meld)
+    # print(f'check {player} meld result: ', meld)
     return meld
 
-for i in range(10):
-    print(i)
-    set_screenshot(f'./logs/20260614_194554/000{i}.jpg')
-    rec_new_meld()
+# for i in range(10):
+#     print(i)
+#     set_screenshot(f'./logs/20260615_133324/000{i}.jpg')
+#     rec_new_meld()
 
-# set_screenshot('./logs/20260614_194554/0009.jpg')
+# set_screenshot('./logs/20260615_133324/0001.jpg')
 # rec_new_meld()
+
+stabled_rec_new_meld = stable_func(rec_new_meld)
 
 def check_new_meld():
     count = 0
-    stabled_rec_new_meld = stable_func(rec_new_meld)
-    while count < 10:
+    while count < 20:
         meld = stabled_rec_new_meld()
         if meld is not None:
             return meld
@@ -196,12 +196,13 @@ def check_new_meld():
     else:
         raise RuntimeError('未识别出新的副露')
 
-#TODO 这里也要增加stable_func
+stabled_rec_kakan = stable_func(rec_kakan)
 def check_kan():
-    kakan_meld = rec_kakan()
+    kakan_meld = stabled_rec_kakan()
     if kakan_meld is not None:
         return kakan_meld
-    ankan_meld = rec_new_meld()
+    ankan_meld = stabled_rec_new_meld()
     if ankan_meld is not None:
         return ankan_meld
     return None
+

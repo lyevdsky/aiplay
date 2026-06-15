@@ -1,15 +1,17 @@
 import cv2
-from config import TILE_WHILE_HSV, WHILE_HSV
+from config import TILE_WHILE_HSV, WHILE_HSV, IS_DEV
 from util import find_contour
+from ultralytics import YOLO
 
 MOCK = False
-
-model = None
+if IS_DEV:
+    model = None
+else:
+    model = YOLO("./ref/yolo/best.pt")
 
 def get_model():
     global model
     if model is None:
-        from ultralytics import YOLO
         # model = YOLO("/Users/weilong/code/mjai/mahjong-game/runs/classify/mahjong/weights/best.pt")
         model = YOLO("./ref/yolo/best.pt")
     return model
@@ -19,7 +21,9 @@ def predict_tile(img, threshold = 0.8, debug=False):
     h, w = img.shape[:2]
     if w < 30 or h < 30:
         return None  # 图片太小
-    
+    # if w / h < 0.32:
+    #     print('宽高比过于夸张')
+    #     return None # 宽高比过于夸张
     """
     img: OpenCV读取的图片 (numpy数组, BGR格式)
     返回: (牌名, 置信度)
@@ -84,6 +88,7 @@ def check_tile(img, player = 'self', min_area=1500, threshold=0.8, return_dict =
 
     normalized_img, direction = normalize_direction(tileimg, player)
     if debug:
+        print(f'width: {w}, height: {h}')
         cv2.imshow('check_tile', normalized_img)
         cv2.waitKey(0)
         cv2.destroyWindow('check_tile')
@@ -112,6 +117,7 @@ def check_tiles(img, player = 'self', min_area=1500, threshold=0.8, debug=False)
         normalized_img, direction = normalize_direction(tileimg, player)
 
         if debug:
+            print(f'width: {w}, height: {h}')
             cv2.imshow('check_tile', normalized_img)
             cv2.waitKey(0)
             cv2.destroyWindow('check_tile')

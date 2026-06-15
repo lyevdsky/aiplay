@@ -8,6 +8,7 @@ from screenshot import get_screenshot, set_screenshot
 from util import concat_images_horizontal, find_contour, stable_func
 from config import *
 from tile import check_tile
+from hand import rec_tsumo
 
 def crop_kawa_tile(player, pos, riichi_index = None):
     row = pos // 6
@@ -58,7 +59,7 @@ def rec_dahai(player, pos, riichi_index):
         h = h + 30
 
     img = get_screenshot((x,y,w,h))
-    result = check_tile(img, player, return_dict=True, debug=False)
+    result = check_tile(img, player, return_dict=True, debug=True)
     if result is None:
         return None
     
@@ -105,7 +106,7 @@ def _check_dahai():
     player_info = gamestate['player_info'][gamestate['current_player']]
 
     result = rec_dahai(player_pos, player_info['kawa_index'], player_info['riichi_index'])
-    print('check dahai: ', player_pos, result)
+    # print('check dahai: ', player_pos, result)
     if result is not None:
         tile, tsumogiri, riichi = result
         print('rec_daihai: ', tile, tsumogiri, riichi)
@@ -124,5 +125,10 @@ def check_dahai_claimed():
     return result is None
 
 
-# set_screenshot('./imgs/yolo_error_1m.jpg')
-# rec_dahai('prev', 11, None)
+set_screenshot('./imgs/error/tenpai.png')
+res = rec_dahai('self', 13, None)
+print(res)
+print(rec_tsumo())
+if rec_tsumo() is not None:
+    res = None
+print(res)

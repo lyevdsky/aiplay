@@ -19,7 +19,7 @@ gamestate = {
         {
             "kawa_index": 1, # 当前下一张打牌在牌河显示的位置，不包括被鸣的牌
             "riichi_index": None, # 立直牌在牌河的位置，用于修正裁剪牌位置
-            "melds": [] 
+            "melds": [{},{}] 
         },
         {
             "kawa_index": 0,

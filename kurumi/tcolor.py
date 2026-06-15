@@ -3,7 +3,7 @@ import numpy as np
 import tkinter as tk
 from tkinter import ttk
 
-img = cv2.imread("./imgs/active_bar_2.png")
+img = cv2.imread("./logs/20260614_194554/0009.jpg")
 
 hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 # mask = cv2.inRange(hsv, (20, 100, 220), (35, 255, 255))

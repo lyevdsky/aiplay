@@ -63,7 +63,10 @@ def get_oya(screenshot):
     x,y,w,h = CENTER_REGION
     center = screenshot[y:y+h, x:x+w]
     cs = find_contour(center, [RED_HSV_1, RED_HSV_2])
-   
+
+    if len(cs) == 0:
+        return None
+        
     x, y, w, h = cv2.boundingRect(cs[0])
     if x < 200:
         oya = 'prev' if y < 100 else 'self'
@@ -140,7 +143,7 @@ def check_new_dora_marker():
 # player change 和 hora要同时check，所以这里不使用while True阻塞
 def _check_player_change():
     gamestate = get_gamestate()
-    print('check player change')
+    # print('check player change')
     p = get_active_player()
     if p is not None:
         pid = gamestate['player_to_id'][p]
@@ -180,7 +183,7 @@ check_player_change = stable_func(_check_player_change)
 # if __name__ == "__main__":
 #     asyncio.run(check_player_change())
 
-# set_screenshot('./imgs/error_kyotaku.png')
+# set_screenshot('./imgs/error/kyokunum.jpgerror_kyotaku.png')
 # res = get_active_player()
 # print(res)
 

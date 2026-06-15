@@ -5,10 +5,10 @@ import time
 from screenshot import get_screenshot, save_img_q
 from kyoku import rec_kyoku_info, check_player_change, check_new_dora_marker
 from gamestate import get_gamestate, init_gamestate, set_gamestate
-from hand import rec_hand, check_tsumo
+from hand import rec_hand, check_tsumo, rec_tsumo
 from kawa import check_dahai, check_dahai_claimed
 from meld import check_new_meld, check_kan
-from hora import check_hora
+from hora import check_interrupt
 from util import polling
 from config import POLLING_INTERVAL
 from enum import Enum
@@ -51,12 +51,11 @@ class Game:
         self.phase = Phase.StartKyoku
         self.remaining_tsumo = 70
         self.bot = Bot()
-        print(self.bot)
         self.listener = listener
 
     def start_with_state(self, state):
         set_gamestate(state)
-
+        self.bot = None
 
     def start_kyoku(self):
         print("Starting new kyoku...")
@@ -140,8 +139,7 @@ class Game:
             'type': 'dahai',
             'actor': player,
             'pai': tile,
-            'tsumogiri': tsumogiri,
-            'riichi': riichi
+            'tsumogiri': tsumogiri
         })
         return
     
@@ -150,6 +148,7 @@ class Game:
         type = meld['type']
 
         if type == 'chi' or type == 'pon':
+            print_with_color(f'玩家 {player} {type} < {meld["consumed"]} >')
             self.notify({
                 'type': type,
                 'consumed': meld['consumed'],
@@ -157,7 +156,6 @@ class Game:
                 'actor': player,
                 'target': self.last_player
             })
-            print_with_color(f'玩家 {player} {type} < {meld["consumed"]} >')
             player_melds.append({
                 'type': type,
                 'consumed': meld['consumed'],
@@ -227,20 +225,21 @@ class Game:
         self.need_open_dora = False
 
     def main(self):
+        state = self.state
+
         # check current_player kakan ankan dahai hora
         def check_dahai_phase():
             player = state['current_player']
 
-            hora = check_hora()
-            if hora:
-                return 'hora'
+            interrupt = check_interrupt()
+            if interrupt:
+                return interrupt
             
             meld = check_kan()
             if meld is not None:
                 self.claim(player, meld)
                 return meld['type']
 
-            # 自摸check
             res = check_dahai()
             if res is not None:
                 tile, tsumogiri, riichi = res
@@ -251,9 +250,9 @@ class Game:
             return None
         
         def check_claim_phase():
-            hora = check_hora()
-            if hora:
-                return 'hora'
+            interrupt = check_interrupt()
+            if interrupt:
+                return interrupt
 
             player = check_player_change()
             if player is not None:
@@ -261,7 +260,6 @@ class Game:
                 return player
             return None
         
-        state = self.state
 
         while True:
             player = state['current_player']
@@ -297,12 +295,12 @@ class Game:
 
             elif self.phase == Phase.Claim:
                 # player change / hora
-                playerOrHora = polling(check_claim_phase, POLLING_INTERVAL, timeout=30)
-                if playerOrHora == 'hora':
+                playerOrInterrupt = polling(check_claim_phase, POLLING_INTERVAL, timeout=30)
+                if playerOrInterrupt == 'hora':
                     self.phase = Phase.Hora
                     continue
                 else:
-                    player = playerOrHora
+                    player = playerOrInterrupt
 
                 if self.need_open_dora:
                     self.open_dora()
@@ -334,15 +332,20 @@ class Game:
                 self.phase = Phase.Tsumo
 
             elif self.phase == Phase.Hora:
+                print_with_color('荣和')
                 save_img_q()
                 break
 
         self.print_mjai()
-
+        print_with_color('游戏结束')
         return
     
     def notify(self, message):
         self.mjai.append(message)
+
+        if self.bot is None:
+            return
+        
         if message['type'] == 'start_kyoku':
             self.bot.start(self.state['my_id'])
         elif message['type'] == 'end_kyoku':
@@ -373,15 +376,17 @@ def on_press(key):
 listener = keyboard.Listener(on_press=on_press)
 listener.start()
 
+_state_full_1 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 2, 'dora_markers': ['5m'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['prev', 'self', 'next', 'across'], 'current_player': 3, 'player_to_id': {'self': 1, 'next': 2, 'across': 3, 'prev': 0}, 'oya': 0, 'player_info': [{'kawa_index': 7, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 8, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 7, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 7, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 1}
+# 2:20 = 140000
 # _state3 = {'honba': '', 'kyotaku': '', 'bakaze': 'E', 'kyoku': 4, 'dora_markers': ['1p'], 'scores': ['11300', '21000', '7', '33700'], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 3, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 0, 'player_info': [{'kawa_index': 13, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 12, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 13, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['2p', '2p'], 'tile': '2p'}, {'type': 'ankan'}]}, {'kawa_index': 14, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['0m', '5m'], 'tile': '5m'}, {'type': 'ankan'}, {'type': 'pon', 'consumed': ['8p', '8p'], 'tile': '8p'}]}], 'my_id': 2}
 # _state2 = {'honba': '', 'kyotaku': '', 'bakaze': 'E', 'kyoku': 4, 'dora_markers': ['1p'], 'scores': ['11300', '21000', '7', '33700'], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 0, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 0, 'player_info': [{'kawa_index': 12, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 11, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 12, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['2p', '2p'], 'tile': '2p'}, {'type': 'ankan'}]}, {'kawa_index': 14, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['0m', '5m'], 'tile': '5m'}, {'type': 'ankan'}, {'type': 'pon', 'consumed': ['8p', '8p'], 'tile': '8p'}]}], 'my_id': 2}
 # _state = {'honba': '', 'kyotaku': '', 'bakaze': 'E', 'kyoku': 4, 'dora_markers': ['1p'], 'scores': ['11300', '21000', '7', '33700'], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 2, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 0, 'player_info': [{'kawa_index': 4, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 4, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 3, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['2p', '2p'], 'tile': '2p'}]}, {'kawa_index': 4, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['0m', '5m'], 'tile': '5m'}]}], 'my_id': 2}
 if __name__ == "__main__":
     try:
         game = Game()
-        # game.start_with_state(_state3)
+        # game.start_with_state(_state_full_1)
         # game.phase = Phase.Tsumo
-        asyncio.run(game.main())
+        game.main()
     except Exception as e:
         save_img_q()
         print_with_color('游戏中止，打印中止时的GAME STATE', 'red')

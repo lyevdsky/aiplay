@@ -57,7 +57,7 @@ def filter_cyan(img, hsv):
     mask = cv2.inRange(_hsv, lower, upper)
     return mask
 
-def has_template(image, template, threshold=0.7, hsv = None, debug = False):
+def has_template(image, template, threshold=0.8, hsv = None, debug = False):
     if hsv is not None:
         image = filter_cyan(image, hsv)
         template = filter_cyan(template, hsv)
