@@ -35,7 +35,8 @@ class Phase(Enum):
 # 打牌太快问题。
 # ui
 # 杠 哪个问题
-# 
+# ai none 时有可能是鸣牌跳过 
+# ai result 还要展示概率
 def print_with_color(text, color = 'green'):
     if color == 'green':
         print(f'\033[32m [GAME] {text} \033[0m')
@@ -262,7 +263,7 @@ class Game:
 
             player = check_player_change()
             if player is not None:
-                print_with_color(f'切换至玩家 {player}')
+                # print_with_color(f'切换至玩家 {player}')
                 return player
             return None
         

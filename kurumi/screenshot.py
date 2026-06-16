@@ -11,7 +11,7 @@ frame = camera.get_latest_frame()
 region = (0, 0, 2560, 1440)
 camera.start(target_fps=60)
 
-SHOW_SCREENSHOW = True
+SHOW_SCREENSHOW = False
 img_q = deque(maxlen=10)
 screenshot = {
     'img': None,
