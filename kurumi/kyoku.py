@@ -2,7 +2,7 @@ import asyncio
 import time
 import cv2
 import numpy as np
-from util import create_polling_sync, has_template, ocr_digits, to_black_on_white, find_contour, crop_min_rect, stable_func
+from util import create_polling_sync, has_template, ocr_digits, to_black_on_white, find_contour, crop_min_rect, stable_func, polling
 from screenshot import get_screenshot, set_screenshot
 from gamestate import get_gamestate
 from config import *
@@ -154,35 +154,22 @@ def _check_player_change():
 
 check_player_change = stable_func(_check_player_change)
 
-# async def check_player_change():
-#     stabled_get_active_player = stable_func(get_active_player)
-#     async def check():
-#         while True:
-#             shot = screenshot()
-#             gamestate = get_gamestate()
-#             print('check player change')
-#             p = stabled_get_active_player(shot)
-#             if p is not None:
-#                 pid = gamestate['player_to_id'][p]
-#                 if pid != gamestate['current_player']:
-#                     print('player change to: ', p)
-#                     return pid
-#             await asyncio.sleep(0)
-#     try:
-#         result = await asyncio.wait_for(check(), timeout=None)
-#         return result
-#     except asyncio.TimeoutError:
-#         return None
-
-
-# def check_new_dora():
-#     stabled_get_dora_marker = stable_func(get_dora_marker)
-#     poll = create_polling_sync(stabled_get_dora_marker, 0.2, 2, '超时未识别到新宝牌指示牌')
-#     return poll()
-
-# if __name__ == "__main__":
-#     asyncio.run(check_player_change())
-
+def wait_new_kyoku():
+    print('wait new kyoku')
+    def check_new_kyoku():
+        screenshot = get_screenshot()
+        marker = stabled_get_dora_marker(screenshot, 0)
+        print(marker)
+        if marker is not None:
+            return True
+            
+        return None
+    
+    try:
+        polling(check_new_kyoku, POLLING_INTERVAL, timeout = 300)
+        return True
+    except:
+        return False
 # set_screenshot('./imgs/error/kyokunum.jpgerror_kyotaku.png')
 # res = get_active_player()
 # print(res)

@@ -6,11 +6,14 @@ from config import HORA_HSV
 from kyoku import get_oya
 
 hora_region = (1375, 190, 220, 145)
-hora_template = cv2.imread('./ref/kyoku/hora.png')
+ron_template = cv2.imread('./ref/kyoku/hora.png')
+tsumo_template = cv2.imread('./ref/kyoku/tsumo.png')
 
 def is_hora():
     screenshot = get_screenshot(hora_region)
-    bool = has_template(screenshot, hora_template, hsv = HORA_HSV, debug=False)
+    bool = has_template(screenshot, ron_template, hsv = HORA_HSV, debug=False)
+    if not bool:
+        bool = has_template(screenshot, tsumo_template, hsv = HORA_HSV, debug=False)
     print('check hora: ', bool)
     return bool
 

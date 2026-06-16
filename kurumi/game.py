@@ -5,7 +5,7 @@ import json
 import time
 
 from screenshot import get_screenshot, save_img_q
-from kyoku import rec_kyoku_info, check_player_change, check_new_dora_marker
+from kyoku import rec_kyoku_info, check_player_change, check_new_dora_marker, wait_new_kyoku
 from gamestate import get_gamestate, init_gamestate, set_gamestate
 from hand import rec_hand, check_tsumo, rec_tsumo
 from kawa import check_dahai, check_dahai_claimed
@@ -24,19 +24,23 @@ class Phase(Enum):
     Tsumo = 2
     Claim = 3
     Hora = 4
+    EndKyoku = 5
+    EndGame = 6
+    StartGame = 7
 
 # TODO
 # 流局 判断
 # settle
-# ai reach dahai
-#  ai print less
-# new kyoku gameloop
-# 听牌提示 认为打牌问题
-# 打牌太快问题。
-# ui
+# ai reach dahai 
+#  ai print less !
+# new kyoku gameloop !
+# 听牌提示 认为打牌问题 o
+# 打牌太快问题。 !
+# ui -
 # 杠 哪个问题
-# ai none 时有可能是鸣牌跳过 
-# ai result 还要展示概率
+# ai none 时有可能是鸣牌跳过  x
+# ai result 还要展示概率 x
+# 自摸
 def print_with_color(text, color = 'green'):
     if color == 'green':
         print(f'\033[32m [GAME] {text} \033[0m')
@@ -55,7 +59,7 @@ class Game:
         self.last_player = None
         self.riichi_to_accepted = None
         self.need_open_dora = 0
-        self.phase = Phase.StartKyoku
+        self.phase = Phase.StartGame
         self.remaining_tsumo = 70
         self.bot = Bot()
         self.listener = listener
@@ -335,17 +339,28 @@ class Game:
 
             elif self.phase == Phase.StartKyoku:
                 self.start_kyoku()
-                
                 self.phase = Phase.Tsumo
 
             elif self.phase == Phase.Hora:
-                print_with_color('荣和')
-                save_img_q()
-                break
+                print_with_color('和了')
+                self.phase = Phase.EndKyoku
 
-        self.print_mjai()
-        print_with_color('游戏结束')
-        return
+            elif self.phase == Phase.EndKyoku:
+                init_gamestate()
+                is_new_kyoku = wait_new_kyoku()
+                if is_new_kyoku:
+                        self.phase = Phase.StartKyoku
+                else:
+                    self.phase = Phase.EndGame
+               
+            elif self.phase == Phase.StartGame:
+                wait_new_kyoku()
+                self.phase = Phase.StartKyoku
+
+            elif self.phase == Phase.EndGame:
+                print_with_color('游戏结束')
+                self.print_mjai()
+                break
     
     def notify(self, message):
         self.mjai.append(message)

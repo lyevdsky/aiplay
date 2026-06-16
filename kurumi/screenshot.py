@@ -4,14 +4,16 @@ import cv2
 from collections import deque
 from datetime import datetime
 from pynput import keyboard
-import dxcam
+import sys
 
-camera = dxcam.create(output_color="BGR")
-frame = camera.get_latest_frame() 
-region = (0, 0, 2560, 1440)
-camera.start(target_fps=60)
+if sys.platform == "win32":
+    import dxcam
+    camera = dxcam.create(output_color="BGR")
+    frame = camera.get_latest_frame() 
+    region = (0, 0, 2560, 1440)
+    camera.start(target_fps=60)
 
-SHOW_SCREENSHOW = False
+SHOW_SCREENSHOW = True
 img_q = deque(maxlen=10)
 screenshot = {
     'img': None,
@@ -24,14 +26,14 @@ fps = cap.get(cv2.CAP_PROP_FPS)
 duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps   # 视频总时长（秒）
 
 def video_capture():
-    # video_start_ms = 174000
-    video_start_ms = 0
+    video_start_ms = 192000
+    # video_start_ms = 0
 
     if not hasattr(video_capture, '_count'):
         video_capture._count = 0
         video_capture._start_time = time.time()
-    if False:
-        ms = video_start_ms + video_capture._count * 50
+    if True:
+        ms = video_start_ms + video_capture._count * 100
         video_capture._count += 1
     else:
         ratio = 0.8
@@ -59,8 +61,8 @@ def video_capture():
 #     return img
 
 def capture():
+    return video_capture()
     frame = camera.get_latest_frame()
-    # return video_capture()
     return frame
 
 def set_screenshot(path):
@@ -94,6 +96,10 @@ def get_screenshot(region = None, cache_ms=50):
             cv2.waitKey(1)
 
         return shot[y:y+h,x:x+w]
+
+    if SHOW_SCREENSHOW:
+        cv2.imshow('get_screenshot', shot)
+        cv2.waitKey(1)
 
     return shot
 
