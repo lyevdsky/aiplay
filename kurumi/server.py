@@ -5,6 +5,7 @@ from fastapi.responses import HTMLResponse
 import uvicorn
 import threading
 from game import Game
+from screenshot import save_img_q
 
 app = FastAPI()
 clients = set()
@@ -43,7 +44,10 @@ thread = threading.Thread(target=start_server, daemon=True)
 thread.start()
 
 # 主线程跑game
-game = Game(listener=lambda data: update_ui(data))
-game.main()
+try:
+    game = Game(listener=lambda data: update_ui(data))
+    game.main()
+except Exception as e:
+    save_img_q()
 while True:
     time.sleep(100)
