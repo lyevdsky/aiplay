@@ -126,10 +126,10 @@ def check_dahai_claimed():
     print('check_dahai_claimed: ', result is None)
     return result is None
 
-for i in range(10):
-    set_screenshot(f'./logs/20260617_165923/000{i}.jpg')
-    res = rec_dahai('self', 7, None)
-    print(res)
+# for i in range(10):
+#     set_screenshot(f'./logs/20260617_165923/000{i}.jpg')
+#     res = rec_dahai('self', 7, None)
+#     print(res)
 # print(rec_tsumo())
 # if rec_tsumo() is not None:
 #     res = None

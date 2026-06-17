@@ -12,7 +12,7 @@ clients = set()
 
 @app.get("/")
 def index():
-    with open("index.html") as f:
+    with open("kurumi_overlay.html") as f:
         return HTMLResponse(f.read())
 
 @app.websocket("/ws")
@@ -24,7 +24,7 @@ async def websocket_endpoint(websocket: WebSocket):
     finally:
         clients.remove(websocket)
 
-def update_ui(data: dict):
+def send_message(data: dict):
     for client in clients.copy():
         asyncio.run_coroutine_threadsafe(
             client.send_json(data),
@@ -43,11 +43,14 @@ def start_server():
 thread = threading.Thread(target=start_server, daemon=True)
 thread.start()
 
+# 等待服务器启动
+time.sleep(10)
 # 主线程跑game
 try:
-    game = Game(listener=lambda data: update_ui(data))
+    game = Game(listener=lambda data: send_message(data))
     game.main()
 except Exception as e:
     save_img_q()
+
 while True:
     time.sleep(100)

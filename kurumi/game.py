@@ -175,9 +175,9 @@ class Game:
             })
         elif type == 'daiminkan':
             num, suit = self.last_dahai
-            if num == 5:
-                consumed = ([self.last_dahai] * 2).append('0' + suit)
-            elif num == 0:
+            if num == '5':
+                consumed = [self.last_dahai] * 2 + ['0' + suit]
+            elif num == '0':
                 consumed = ['5' + suit] * 3
             else:
                 consumed = [self.last_dahai] * 3
@@ -194,8 +194,8 @@ class Game:
         elif type == 'ankan':
             tile = meld['tile']
             num, suit = tile
-            if num == 5:
-                consumed = ([tile] * 3).append('0' + suit)
+            if num == '5':
+                consumed = [tile] * 3 + ['0' + suit]
             else:
                 consumed = [tile] * 4
             self.notify({
@@ -210,7 +210,7 @@ class Game:
             consumed = [meld['tile'], *meld['consumed']]
             num, suit = meld['tile']
             if num == '5':
-                if consumed[1][0] == '5' and consumed[2][0] == 5:
+                if consumed[1][0] == '5' and consumed[2][0] == '5':
                     pai = '0' + suit
                 else:
                     pai = '5' + suit
@@ -368,6 +368,9 @@ class Game:
     def notify(self, message):
         self.mjai.append(message)
 
+        if self.listener is not None:
+            self.listener({ 'type': 'mjai', 'data': message })
+
         if self.bot is None:
             return
         
@@ -381,7 +384,7 @@ class Game:
             raise RuntimeError('AI React Error', react['error'])
         
         if self.listener is not None:
-            self.listener(react)
+            self.listener({ 'type': 'ai', 'data': react })
 
         print_with_color(react, 'blue')
         return
@@ -410,8 +413,8 @@ _state_full_1 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 2, 'dora_mark
 if __name__ == "__main__":
     try:
         game = Game()
-        game.start_with_state(_state_full_3)
-        game.phase = Phase.Tsumo
+        # game.start_with_state(_state_full_3)
+        # game.phase = Phase.Tsumo
         game.main()
     except Exception as e:
         save_img_q()

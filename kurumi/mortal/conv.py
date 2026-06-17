@@ -61,15 +61,15 @@ def actionIndexToAction(index):
     if tile:
         return tile
     labels = {
-        37: '立直',
-        38: '吃-低目',
-        39: '吃-中张',
-        40: '吃-高目',
-        41: '碰',
-        42: '杠',
-        43: '和了',
-        44: '流局',
-        45: '跳过',
+        37: 'riichi',
+        38: 'chi_low',
+        39: 'chi_mid',
+        40: 'chi_high',
+        41: 'pon',
+        42: 'kan',
+        43: 'hora',
+        44: 'ryukyoku',
+        45: 'none',
     }
     if index in labels:
         return labels[index]

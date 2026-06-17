@@ -34,10 +34,10 @@ def predict_tile(img, threshold = 0.8, debug=False):
     top1 = result.probs.top1
     name = result.names[top1]
     conf = result.probs.top1conf.item()
-    print(f'predict_tile: ({name},{conf:.2f})')
+    # print(f'predict_tile: ({name},{conf:.2f})')
 
-    if conf > 0.7 and conf < 0.8:
-        cv2.imwrite('./logs/error/1.png', img)
+    # if conf > 0.7 and conf < 0.8:
+    #     cv2.imwrite('./logs/error/1.png', img)
     if debug:
         if conf > 0.7 and conf < 0.8:
             cv2.imwrite('./logs/error/1.png', img)
@@ -140,8 +140,8 @@ def check_tiles(img, player = 'self', min_area=1500, threshold=0.8, debug=False)
     return result
 
 # TODO m1 0.67
-img = cv2.imread('./logs/error/yolo_6p2.png')
-predict_tile(img, debug=True)
+# img = cv2.imread('./logs/error/yolo_6p2.png')
+# predict_tile(img, debug=True)
 # x,y,w,h = (1612,433,104,78)
 # img = img[y:y+h,x:x+w]
 # check_tile(img, 'next', debug=True)

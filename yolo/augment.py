@@ -67,3 +67,19 @@ for class_dir in src_root.iterdir():
     augment_tile(images[0], class_dir, count=80)
 
 print("增强完成！")
+
+# 复制 hard_examples 到 dataset/train
+hard_root = Path("hard_examples")
+if hard_root.exists():
+    for class_dir in hard_root.iterdir():
+        if not class_dir.is_dir():
+            continue
+        images = list(class_dir.glob("*.png")) + list(class_dir.glob("*.jpg"))
+        if not images:
+            continue
+        out_dir = TRAIN_DIR / class_dir.name
+        out_dir.mkdir(parents=True, exist_ok=True)
+        for img_path in images:
+            dst = out_dir / f"hard_{img_path.name}"
+            shutil.copy(img_path, dst)
+            print(f"复制困难样本: {img_path} -> {dst}")
