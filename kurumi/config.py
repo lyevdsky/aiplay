@@ -1,5 +1,5 @@
-IS_DEV = True
-POLLING_INTERVAL = 0.5 if not IS_DEV else 0.1
+IS_DEV = False
+POLLING_INTERVAL = 0.3 if not IS_DEV else 0.1
 
 # color
 RED_HSV_1 = [(0, 80, 80), (15, 255, 255)]

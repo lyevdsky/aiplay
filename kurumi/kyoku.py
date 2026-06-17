@@ -157,7 +157,6 @@ def wait_new_kyoku():
     def check_new_kyoku():
         screenshot = get_screenshot()
         marker = stabled_get_dora_marker(screenshot, 0)
-        print(marker)
         if marker is not None:
             return True
             

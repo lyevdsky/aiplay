@@ -33,7 +33,7 @@ class Phase(Enum):
 # settle
 # ai reach dahai 
 # ai print less !
-# new kyoku gameloop !
+# new kyoku gameloop !!!!!!!!!!!
 # 听牌提示 认为打牌问题 o
 # 打牌太快问题。 !
 # ui -
@@ -41,7 +41,6 @@ class Phase(Enum):
 # ai none 时有可能是鸣牌跳过  x
 # ai result 还要展示概率 x
 # 自摸 x
-# error/yolo_6p.png yolo没有训练到纵向压缩
 def print_with_color(text, color = 'green'):
     if color == 'green':
         print(f'\033[32m [GAME] {text} \033[0m')

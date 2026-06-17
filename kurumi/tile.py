@@ -34,11 +34,11 @@ def predict_tile(img, threshold = 0.8, debug=False):
     top1 = result.probs.top1
     name = result.names[top1]
     conf = result.probs.top1conf.item()
-    # print(f'predict_tile: ({name},{conf:.2f})')
 
     # if conf > 0.7 and conf < 0.8:
     #     cv2.imwrite('./logs/error/1.png', img)
     if debug:
+        print(f'predict_tile: ({name},{conf:.2f})')
         if conf > 0.7 and conf < 0.8:
             cv2.imwrite('./logs/error/1.png', img)
 
