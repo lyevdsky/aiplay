@@ -29,10 +29,10 @@ class Phase(Enum):
     StartGame = 7
 
 # TODO
-# 流局 判断
+# 流局 判断 x
 # settle
 # ai reach dahai 
-#  ai print less !
+# ai print less !
 # new kyoku gameloop !
 # 听牌提示 认为打牌问题 o
 # 打牌太快问题。 !
@@ -40,7 +40,7 @@ class Phase(Enum):
 # 杠 哪个问题
 # ai none 时有可能是鸣牌跳过  x
 # ai result 还要展示概率 x
-# 自摸
+# 自摸 x
 def print_with_color(text, color = 'green'):
     if color == 'green':
         print(f'\033[32m [GAME] {text} \033[0m')

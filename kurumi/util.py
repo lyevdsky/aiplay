@@ -46,6 +46,7 @@ def find_contour(img, hsv, min_area = 500, debug = False):
     if debug:
         imgcopy = img.copy()
         cv2.drawContours(imgcopy, cs, -1, (0, 255, 0), 2)
+        cv2.imshow('find_contour_mask', mask)
         cv2.imshow('find_contour', imgcopy)
         cv2.waitKey(0)
 

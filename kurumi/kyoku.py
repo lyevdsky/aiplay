@@ -1,12 +1,10 @@
-import asyncio
 import time
 import cv2
-import numpy as np
-from util import create_polling_sync, has_template, ocr_digits, to_black_on_white, find_contour, crop_min_rect, stable_func, polling
+from util import has_template, ocr_digits, find_contour, stable_func, polling
 from screenshot import get_screenshot, set_screenshot
 from gamestate import get_gamestate
 from config import *
-from tile import predict_tile
+from tile import check_tile
 
 def get_honba(screenshot):
     x,y,w,h = HONBA_REGION
@@ -62,7 +60,7 @@ def get_kyoku(screenshot):
 def get_oya(screenshot):
     x,y,w,h = CENTER_REGION
     center = screenshot[y:y+h, x:x+w]
-    cs = find_contour(center, [RED_HSV_1, RED_HSV_2])
+    cs = find_contour(center, OYA_HSV, debug=False)
 
     if len(cs) == 0:
         return None
@@ -79,7 +77,7 @@ def get_dora_marker(screenshot, index = 0):
     x,y,w,h = DORA_FIRST_REGION
     x = x + index * w
     doraimg = screenshot[y:y+h,x:x+w]
-    tile = predict_tile(doraimg)
+    tile = check_tile(doraimg)
     return tile
 
 def get_scores(screenshot):
@@ -167,10 +165,18 @@ def wait_new_kyoku():
     
     try:
         polling(check_new_kyoku, POLLING_INTERVAL, timeout = 300)
-        return True
+        # 等待手牌准备就绪
+        while True:
+            img = get_screenshot(HAND_FIRST_REGION)
+            tile = check_tile(img, debug=True)
+            if tile is not None:
+                time.sleep(0.2)
+                return True
+            time.sleep(1)
     except:
         return False
-# set_screenshot('./imgs/error/kyokunum.jpgerror_kyotaku.png')
+# set_screenshot('./logs/20260617_115125/0009.jpg')
+# wait_new_kyoku()
 # res = get_active_player()
 # print(res)
 
