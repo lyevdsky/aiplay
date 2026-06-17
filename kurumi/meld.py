@@ -108,17 +108,14 @@ def get_current_player_info():
 def rec_kakan():
     shot = get_screenshot()
     player, melds = get_current_player_info()
-    player = 'self'
-    melds = [{ 'type': 'pon' }]
     for i, meld in enumerate(melds):
         if meld['type'] == 'pon':
             x,y,w,h = get_meld_region(player, melds, i)
-            result = check_tiles(shot[y:y+h,x:x+w], player, debug=False)
+            result = check_tiles(shot[y:y+h,x:x+w], player, debug=False)            
             if len(result) == 4:
                 # 这里识别到加杠需要改type，
                 meld['type'] = 'kakan'
                 return meld
-
     return None
 
 # 加杠另外单独识别
@@ -129,7 +126,7 @@ def rec_new_meld():
     # melds = [{ 'type': 'pon'}, { 'type': 'ankan' }, {'type': 'pon'}]
     # melds = [{ 'type': 'chi'}]
     # melds = []
-    # player = 'self'
+    # player = 'prev'
     x,y,w,h = get_meld_region(player, melds, len(melds))
     img = get_screenshot((x,y,w,h))
 
@@ -159,6 +156,9 @@ def rec_new_meld():
                 consumed.append(r['tile'])
             else:
                 tile = r['tile']
+        # 识别异常直接返回None
+        if len(consumed) != 2:
+            return None
         if consumed[0] == consumed[1] or consumed[0] == tile or consumed[1] == tile:
             meld = {
                 'type': 'pon',
@@ -180,8 +180,9 @@ def rec_new_meld():
 #     set_screenshot(f'./logs/20260615_133324/000{i}.jpg')
 #     rec_new_meld()
 
-# set_screenshot('./logs/20260615_133324/0001.jpg')
-# rec_new_meld()
+# set_screenshot('./logs/20260617_154527/0009.jpg')
+# res = rec_new_meld()
+# print(res)
 
 stabled_rec_new_meld = stable_func(rec_new_meld)
 

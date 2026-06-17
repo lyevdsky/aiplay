@@ -2,7 +2,7 @@ import cv2
 import time
 from util import has_template, stable_func
 from screenshot import get_screenshot, set_screenshot
-from config import HORA_HSV, RYUKYOKU_HSV, HORA_REGION, RYUKYOKU_REGION
+from config import HORA_HSV, RYUKYOKU_HSV, HORA_REGION, RYUKYOKU_REGION, POLLING_INTERVAL
 from kyoku import get_oya
 
 ron_template = cv2.imread('./ref/kyoku/hora.png')
@@ -30,13 +30,13 @@ check_ryukyoku = stable_func(is_ryukyoku)
 def check_interrupt():
     i = 0
     # print('check_interrupt')
-    while i < 3:
+    while i < 3 / POLLING_INTERVAL:
         screenshot = get_screenshot()
         oya = get_oya(screenshot)
         if oya is not None:
             return None
         i += 1
-        time.sleep(1)
+        time.sleep(POLLING_INTERVAL)
 
     print('check_interrupt: True')
     while True:

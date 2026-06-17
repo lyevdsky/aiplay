@@ -168,7 +168,7 @@ def wait_new_kyoku():
         # 等待手牌准备就绪
         while True:
             img = get_screenshot(HAND_FIRST_REGION)
-            tile = check_tile(img, debug=True)
+            tile = check_tile(img, debug=False)
             if tile is not None:
                 time.sleep(0.2)
                 return True

@@ -41,6 +41,7 @@ class Phase(Enum):
 # ai none 时有可能是鸣牌跳过  x
 # ai result 还要展示概率 x
 # 自摸 x
+# error/yolo_6p.png yolo没有训练到纵向压缩
 def print_with_color(text, color = 'green'):
     if color == 'green':
         print(f'\033[32m [GAME] {text} \033[0m')
@@ -334,6 +335,8 @@ class Game:
                     else:
                         self.phase = Phase.Dahai
                 else:
+                    if (self.last_player + 1) % 4 != player:
+                        raise RuntimeError('没有鸣牌的情况下并没有正确轮到下一位玩家')
                     self.state['player_info'][self.last_player]['kawa_index'] += 1
                     self.phase = Phase.Tsumo
 
@@ -397,7 +400,8 @@ def on_press(key):
 
 listener = keyboard.Listener(on_press=on_press)
 listener.start()
-
+_state_full_3 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_markers': ['5s'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 0, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 6, 'riichi_index': None, 'melds': [{'type': 'chi'}], 'riichi': False}, {'kawa_index': 6, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 5, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 5, 'riichi': False, 'riichi_index': None, 'melds': [{"type": 'chi'}]}], 'my_id': 0}
+_state_full_2 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_markers': ['5s'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 0, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 2, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 2, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 2, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 2, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
 _state_full_1 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 2, 'dora_markers': ['5m'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['prev', 'self', 'next', 'across'], 'current_player': 3, 'player_to_id': {'self': 1, 'next': 2, 'across': 3, 'prev': 0}, 'oya': 0, 'player_info': [{'kawa_index': 7, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 8, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 7, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 7, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 1}
 # 2:20 = 140000
 # _state3 = {'honba': '', 'kyotaku': '', 'bakaze': 'E', 'kyoku': 4, 'dora_markers': ['1p'], 'scores': ['11300', '21000', '7', '33700'], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 3, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 0, 'player_info': [{'kawa_index': 13, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 12, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 13, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['2p', '2p'], 'tile': '2p'}, {'type': 'ankan'}]}, {'kawa_index': 14, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['0m', '5m'], 'tile': '5m'}, {'type': 'ankan'}, {'type': 'pon', 'consumed': ['8p', '8p'], 'tile': '8p'}]}], 'my_id': 2}
@@ -406,8 +410,8 @@ _state_full_1 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 2, 'dora_mark
 if __name__ == "__main__":
     try:
         game = Game()
-        # game.start_with_state(_state_full_1)
-        # game.phase = Phase.Tsumo
+        game.start_with_state(_state_full_3)
+        game.phase = Phase.Tsumo
         game.main()
     except Exception as e:
         save_img_q()

@@ -34,8 +34,13 @@ def predict_tile(img, threshold = 0.8, debug=False):
     top1 = result.probs.top1
     name = result.names[top1]
     conf = result.probs.top1conf.item()
+    print(f'predict_tile: ({name},{conf:.2f})')
+
+    if conf > 0.7 and conf < 0.8:
+        cv2.imwrite('./logs/error/1.png', img)
     if debug:
-        print(f'predict_tile: ({name},{conf:.2f})')
+        if conf > 0.7 and conf < 0.8:
+            cv2.imwrite('./logs/error/1.png', img)
 
     if conf > threshold:
         return name[::-1]
@@ -75,7 +80,7 @@ def normalize_direction(tileimg, player):
     
     return tileimg, direction
 
-def check_tile(img, player = 'self', min_area=1500, threshold=0.8, return_dict = False, debug=False):
+def check_tile(img, player = 'self', min_area=1500, threshold=0.75, return_dict = False, debug=False):
     # 先找亮白，再尝试模切的灰白。避免找的牌面矩形不对，导致normalize_direction判断有误
     cs = find_contour(img, WHILE_HSV, min_area)
     if len(cs) == 0:
@@ -135,7 +140,8 @@ def check_tiles(img, player = 'self', min_area=1500, threshold=0.8, debug=False)
     return result
 
 # TODO m1 0.67
-# img = cv2.imread('./imgs/yolo_error_1m.png')
+img = cv2.imread('./logs/error/yolo_6p2.png')
+predict_tile(img, debug=True)
 # x,y,w,h = (1612,433,104,78)
 # img = img[y:y+h,x:x+w]
 # check_tile(img, 'next', debug=True)

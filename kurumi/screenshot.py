@@ -4,6 +4,7 @@ import cv2
 from collections import deque
 from datetime import datetime
 from pynput import keyboard
+from config import POLLING_INTERVAL
 import sys
 
 if sys.platform == "win32":
@@ -20,20 +21,20 @@ screenshot = {
     'time': 0
 }
 
-cap = cv2.VideoCapture("./video/full.mp4")
+cap = cv2.VideoCapture("./video/full2.mp4")
 # cap = cv2.VideoCapture("./video/meld_self_kakan.mp4")
 fps = cap.get(cv2.CAP_PROP_FPS)
 duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps   # 视频总时长（秒）
 
 def video_capture():
-    video_start_ms = 192000
+    video_start_ms = 106000
     # video_start_ms = 0
 
     if not hasattr(video_capture, '_count'):
         video_capture._count = 0
         video_capture._start_time = time.time()
     if True:
-        ms = video_start_ms + video_capture._count * 100
+        ms = video_start_ms + video_capture._count * 50 # (1000 * POLLING_INTERVAL)
         video_capture._count += 1
     else:
         ratio = 0.8

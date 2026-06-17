@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import math
 from gamestate import get_gamestate
-from screenshot import get_screenshot, set_screenshot
+from screenshot import get_screenshot, save_img_q, set_screenshot
 from util import concat_images_horizontal, find_contour, stable_func
 from config import *
 from tile import check_tile
@@ -60,6 +60,7 @@ def rec_dahai(player, pos, riichi_index):
 
     img = get_screenshot((x,y,w,h))
     result = check_tile(img, player, return_dict=True, debug=False)
+    # print(result)
     if result is None:
         return None
     
@@ -95,7 +96,7 @@ def crop_kawa_all_tiles(player):
         tiles.append(tile)
         pos += 1
 
-    concat_images_horizontal(tiles, 12, (255, 0, 0), debug=True)
+    concat_images_horizontal(tiles, 12, (255, 0, 0), debug=False)
     return tiles
 
 # dahai 和 kakan ankan hora要同时check，所以这里不使用while True阻塞
@@ -115,6 +116,7 @@ def _check_dahai():
 check_dahai = stable_func(_check_dahai, debug=False)
 
 def check_dahai_claimed():
+    # gamestate = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_markers': ['5s'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 1, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 2, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 2, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 2, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 2, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
     gamestate = get_gamestate()
     position = gamestate['position']
     player_pos = position[gamestate['current_player']]
@@ -124,10 +126,10 @@ def check_dahai_claimed():
     print('check_dahai_claimed: ', result is None)
     return result is None
 
-
-# set_screenshot('./imgs/error/tenpai.png')
-# res = rec_dahai('self', 13, None)
-# print(res)
+for i in range(10):
+    set_screenshot(f'./logs/20260617_165923/000{i}.jpg')
+    res = rec_dahai('self', 7, None)
+    print(res)
 # print(rec_tsumo())
 # if rec_tsumo() is not None:
 #     res = None
