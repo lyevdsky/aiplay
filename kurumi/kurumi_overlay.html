@@ -1,282 +1,352 @@
 <html>
-
-<head>
-    <style>
-        body {
-            font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-            position: relative;
-            margin: 0;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            background: rgba(0, 0, 0, 0);
-        }
-
-        .actions {
-            /* position: absolute; */
-            /* top/left 跟随 hand 调整 */
-            display: flex;
-            flex-direction: row;
-            gap: 8px;
-            margin-bottom: 8px;
-        }
-
-        .action {
-            box-sizing: border-box;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 18px;
-            font-weight: bold;
-            text-align: center;
-            white-space: nowrap;
-            background: rgba(0, 0, 0, 0.55);
-            color: #fff;
-        }
-
-        /* AI 最推荐的操作：金底黑字 */
-        .action.best {
-            background: #f5c518;
-            color: #000;
-        }
-
-        .hand {
-            /* position: absolute; */
-            /* top: 1190px;
+    <head>
+        <style>
+            body {
+                font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+                position: relative;
+                margin: 0;
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+                background: rgba(0, 0, 0, 0);
+            }
+            .actions {
+                /* position: absolute; */
+                /* top/left 跟随 hand 调整 */
+                display: flex;
+                flex-direction: row-reverse;
+                gap: 8px;
+                margin-bottom: 8px;
+            }
+            .action {
+                box-sizing: border-box;
+                padding: 8px 16px;
+                border-radius: 8px;
+                font-size: 18px;
+                font-weight: bold;
+                text-align: center;
+                white-space: nowrap;
+                background: rgba(0, 0, 0, 0.1);
+                color: #000;
+            }
+            /* 未命中名次的操作默认隐藏，命中 top3 才显示（rank 着色见下方） */
+            .action:not(.rank0):not(.rank1):not(.rank2) {
+                display: none;
+            }
+            .hand {
+                /* position: absolute; */
+                /* top: 1190px;
                 left: 370px; */
-            display: flex;
-            flex-direction: row;
-            gap: 8px;
+                display: flex;
+                flex-direction: row;
+                gap: 8px;
+            }
+            .item {
+                box-sizing: border-box;
+                /* width: 133px; */
+                width: 74px;
+                padding: 8px 16px;
+                border-radius: 8px;
+                font-size: 18px;
+                font-weight: bold;
+                text-align: center;
+                white-space: nowrap;
+            }
+            /* top1：金底黑字 */
+            .rank0 {
+                background: rgb(244, 212, 93);
+                color: #000;
+            }
+            /* top2、top3：蓝底白字 */
+            .rank1,
+            .rank2 {
+                background: rgb(65, 130, 206);
+                color: #fff;
+            }
+            /* 刚摸到的牌与手牌拉开间距 */
+            .drawn {
+                margin-left: 10px;
+            }
+            /* 正式模式：未命中名次的格子只占位、不显示牌名 */
+            .item:not(.rank0):not(.rank1):not(.rank2) {
+                color: transparent;
+                background: transparent;
+            }
+            /* debug 模式：所有格子都用灰底显示牌名 */
+            .hand.debug .item:not(.rank0):not(.rank1):not(.rank2) {
+                color: #000;
+                background: rgba(0, 0, 0, 0.1);
+            }
+        </style>
+    </head>
+    <body>
+        <div class="actions" id="actions">
+            <div class="action" data-label="none" data-name="跳过">跳过</div>
+            <div class="action" data-label="hora" data-name="和">和</div>
+            <div class="action" data-label="riichi" data-name="立直">立直</div>
+            <div class="action" data-label="kan" data-name="杠">杠</div>
+            <div class="action" data-label="pon" data-name="碰">碰</div>
+            <div class="action" data-label="chi" data-name="吃">吃</div>
+            <div class="action" data-label="ryukyoku" data-name="流局">流局</div>
+        </div>
+        <div class="hand" id="hand"></div>
+    </body>
+    <script>
+        const DEBUG = true // true：显示所有手牌；false：只显示 top3
+        HAND_FIRST_REGION = (370, 1190, 133, 173)
+        let hand = [
+            '2m',
+            '3m',
+            '5m',
+            '1p',
+            '2p',
+            '3p',
+            '5p',
+            '3s',
+            '9s',
+            '9s',
+            '1z',
+            '1z',
+            '2z',
+            '2z',
+        ]
+        let myId = null
+        let lastDahai = '1m'   // 最近一张被打出的牌，用于推算吃用到的手牌
+        const mockData = {
+            type: 'dahai',
+            actor: 0,
+            pai: '1p',
+            tsumogiri: false,
+            meta: {
+                q_values: [
+                    -6.972529, -7.1697383, -7.0650706, -6.6260495, 0.58079875,
+                    -7.271259, -7.651653, -2.7606416, -3.4757733, -0.6610018,
+                    -6.117272, -6.2305503,
+                ],
+                mask_bits: 11015340742,
+                is_greedy: true,
+                batch_size: 1,
+                eval_time_ns: 132268799,
+                shanten: 4,
+                at_furiten: false,
+            },
+            values: [
+                { label: 'riichi', q_value: 1.0 },
+                { label: 'kan', q_value: 0.8 },
+                { label: 'chi_low', q_value: 0.9 },
+                { label: 'chi_mid', q_value: 0.3 },
+                { label: '1p', q_value: 0.58079875 },
+                { label: '2z', q_value: -0.6610018 },
+                { label: '3s', q_value: -2.7606416 },
+                { label: '6s', q_value: -3.4757733 },
+                { label: '5z', q_value: -6.117272 },
+                { label: '7z', q_value: -6.2305503 },
+                { label: '8m', q_value: -6.6260495 },
+                { label: '2m', q_value: -6.972529 },
+                { label: '7m', q_value: -7.0650706 },
+                { label: '3m', q_value: -7.1697383 },
+                { label: '6p', q_value: -7.271259 },
+                { label: '7p', q_value: -7.651653 },
+            ],
+        }
+        const ws = new WebSocket('ws://localhost:5500/ws')
+        const handDom = document.getElementById('hand')
+        const actionsDom = document.getElementById('actions')
+        if (DEBUG) handDom.classList.add('debug')
+
+        function sortTiles(tiles) {
+            const suitOrder = { m: 100, p: 200, s: 300, z: 400 }
+            const getValue = (tile) => {
+                const suit = tile[1]
+                const num = tile[0]
+                const value = (num === '0' ? 4.5 : +num) + suitOrder[suit]
+                return value
+            }
+            tiles.sort((a, b) => getValue(a) - getValue(b))
+            return tiles
         }
 
-        .item {
-            box-sizing: border-box;
-            /* width: 133px; */
-            width: 74px;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 18px;
-            font-weight: bold;
-            text-align: center;
-            white-space: nowrap;
+        // 根据被吃的牌 last_dahai 和吃的类型，推算手里用到的两张牌的点数。
+        // chi_low：被吃的最小，用 t+1、t+2；chi_mid：被吃的居中，用 t-1、t+1；
+        // chi_high：被吃的最大，用 t-2、t-1。返回如 ['3m','4m']，红五优先显示手里的 0。
+        function chiConsumed(type) {
+            if (!lastDahai) return []
+            const suit = lastDahai[1]
+            const n = lastDahai[0] === '0' ? 5 : +lastDahai[0]
+            const offsets = {
+                chi_low: [1, 2],
+                chi_mid: [-1, 1],
+                chi_high: [-2, -1],
+            }[type]
+            if (!offsets) return []
+            return offsets.map((d) => {
+                const num = n + d
+                // 该点数是 5 且手里只有红五时，显示 0
+                if (num === 5 && !hand.includes('5' + suit) && hand.includes('0' + suit)) {
+                    return '0' + suit
+                }
+                return num + suit
+            })
         }
 
-        /* top1：金底黑字 */
-        .rank0 {
-            background: #f5c518;
-            color: #000;
+        // 渲染手牌：根据 tiles 生成格子。手牌数除 3 余 2（2/5/8/11/14）时，
+        // 最后一张为刚摸到的牌，排在最右并加间距；其余按手牌顺序排序。
+        function renderHand(tiles) {
+            const isTsumo = tiles.length % 3 === 2
+            const drawn = isTsumo ? tiles[tiles.length - 1] : null
+            const ordered = sortTiles(
+                isTsumo ? tiles.slice(0, -1) : tiles.slice(),
+            )
+
+            handDom.innerHTML = ''
+            const addItem = (label, isDrawn) => {
+                const el = document.createElement('div')
+                el.className = isDrawn ? 'item drawn' : 'item'
+                el.dataset.label = label
+                el.textContent = label // 牌名始终填上，显隐交给 CSS
+                if (isDrawn) el.dataset.drawn = 'true'
+                handDom.appendChild(el)
+            }
+            ordered.forEach((label) => addItem(label, false))
+            if (isTsumo) addItem(drawn, true)
         }
 
-        /* top2、top3：蓝底白字 */
-        .rank1,
-        .rank2 {
-            background: #1677ff;
-            color: #fff;
+        // 渲染名次：根据 data 算 top3，在已渲染的手牌格子里找到对应的牌上色显示分数。
+        // 同名牌只高亮最左的第一张。tsumogiri=true 时摸牌独占 rank0 金色。
+        function renderRank(data) {
+            const values = (data && data.values) || []
+            const items = [...handDom.children]
+
+            // 清除上一次的名次样式，牌名复原（显隐由 CSS 控制）
+            items.forEach((el) => {
+                el.className = el.dataset.drawn ? 'item drawn' : 'item'
+                el.textContent = el.dataset.label
+            })
+            if (values.length === 0) return
+
+            // softmax: 把 q_value 转成百分制 score（和为 100）
+            const qs = values.map((v) => v.q_value)
+            const maxQ = Math.max(...qs)
+            const exps = qs.map((q) => Math.exp(q - maxQ))
+            const sumExp = exps.reduce((a, b) => a + b, 0)
+            values.forEach((v, i) => (v.score = (exps[i] / sumExp) * 100))
+
+            // 重置固定的操作格子：去掉名次类、清掉分数（显隐由 CSS 控制）
+            const actionItems = [...actionsDom.children]
+            actionItems.forEach((el) => {
+                el.className = 'action'
+                el.textContent = el.dataset.name || el.textContent
+            })
+
+            // 取前三（不合并吃，3 个吃也实打实占 3 个名次）；
+            // floor 后 < 1 的剔除，故实际可能只剩 top2/top1
+            const top3 = [...values]
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 3)
+                .filter((v) => Math.floor(v.score) >= 1)
+
+            const used = new Set()
+            const decorate = (el, rank, v) => {
+                used.add(el)
+                el.classList.add('rank' + rank)
+                // 操作格子用中文名(data-name)，手牌格子用牌名(data-label)
+                let name = el.dataset.name || el.dataset.label
+                // 吃：在名称后附上用到的两张手牌，如「吃 3m4m」
+                if (el.dataset.label === 'chi') {
+                    const tiles = chiConsumed(v.label)
+                    if (tiles.length) name += ' ' + tiles.join('')
+                }
+                el.textContent = name + ' ' + Math.floor(v.score)
+            }
+
+            // 在 hand 和 actions 两个容器里找第一张未占用的同名元素；
+            // chi_low/mid/high 都映射到唯一的 chi block，只有最高分那个能占用它
+            const findEl = (label) => {
+                const key = label.startsWith('chi') ? 'chi' : label
+                return (
+                    actionItems.find((x) => !used.has(x) && x.dataset.label === key) ||
+                    items.find((x) => !used.has(x) && x.dataset.label === key)
+                )
+            }
+
+            // tsumogiri：切的就是摸牌，强制把 rank0 高亮到摸牌格子上
+            const drawnEl = items.find((el) => el.dataset.drawn)
+            if (data.tsumogiri && drawnEl) {
+                const v = values.find((x) => x.label === drawnEl.dataset.label)
+                decorate(drawnEl, 0, v || { score: 0 })
+            }
+
+            // 其余 top3：按名次找到对应元素上色
+            top3.forEach((v, rank) => {
+                if (used.has(drawnEl) && v.label === drawnEl.dataset.label) return
+                const el = findEl(v.label)
+                if (el) decorate(el, rank, v)
+            })
         }
 
-        /* 刚摸到的牌与手牌拉开间距 */
-        .drawn {
-            margin-left: 10px;
-        }
-
-        /* 正式模式：未命中名次的格子只占位、不显示牌名 */
-        .item:not(.rank0):not(.rank1):not(.rank2) {
-            color: transparent;
-            background: transparent;
-        }
-
-        /* debug 模式：所有格子都用灰底显示牌名 */
-        .hand.debug .item:not(.rank0):not(.rank1):not(.rank2) {
-            color: #000;
-            background: rgba(0, 0, 0, 0.1);
-        }
-    </style>
-</head>
-
-<body>
-    <div class="actions" id="actions"></div>
-    <div class="hand" id="hand"></div>
-</body>
-<script>
-    const DEBUG = true   // true：显示所有手牌；false：只显示 top3
-    // 非打牌类操作的 label → 显示名
-    const ACTION_NAMES = {
-        riichi: '立直',
-        chi_low: '吃',
-        chi_mid: '吃',
-        chi_high: '吃',
-        pon: '碰',
-        kan: '杠',
-        hora: '和',
-        ryukyoku: '流局',
-        none: '跳过',
-    }
-    HAND_FIRST_REGION = (370, 1190, 133, 173)
-    let hand = ['2m', '3m', '5m', '1p', '2p', '3p', '5p', '3s', '9s', '9s', '1z', '1z', '2z', '2z']
-    let myId = null
-    const mockData = { 
-        "type": "dahai", "actor": 0, "pai": "1p", "tsumogiri": false, "meta": { "q_values": [-6.972529, -7.1697383, -7.0650706, -6.6260495, 0.58079875, -7.271259, -7.651653, -2.7606416, -3.4757733, -0.6610018, -6.117272, -6.2305503], "mask_bits": 11015340742, "is_greedy": true, "batch_size": 1, "eval_time_ns": 132268799, "shanten": 4, "at_furiten": false },
-        "values": [ { "label": "riichi", "q_value": 1.1 },
-            { "label": "1p", "q_value": 0.58079875 }, { "label": "2z", "q_value": -0.6610018 }, { "label": "3s", "q_value": -2.7606416 }, { "label": "6s", "q_value": -3.4757733 }, { "label": "5z", "q_value": -6.117272 }, { "label": "7z", "q_value": -6.2305503 }, { "label": "8m", "q_value": -6.6260495 }, { "label": "2m", "q_value": -6.972529 }, { "label": "7m", "q_value": -7.0650706 }, { "label": "3m", "q_value": -7.1697383 }, { "label": "6p", "q_value": -7.271259 }, { "label": "7p", "q_value": -7.651653 }] }
-    const ws = new WebSocket('ws://localhost:5500/ws')
-    const handDom = document.getElementById('hand')
-    const actionsDom = document.getElementById('actions')
-    if (DEBUG) handDom.classList.add('debug')
-
-    function sortTiles(tiles) {
-        const suitOrder = { m: 100, p: 200, s: 300, z: 400 }
-        const getValue = tile => {
-            const suit = tile[1]
-            const num = tile[0]
-            const value = (num === '0' ? 4.5 : +num) + suitOrder[suit]
-            return value
-        }
-        tiles.sort((a, b) => getValue(a) - getValue(b))
-        return tiles
-    }
-
-    // 渲染手牌：根据 tiles 生成格子。手牌数除 3 余 2（2/5/8/11/14）时，
-    // 最后一张为刚摸到的牌，排在最右并加间距；其余按手牌顺序排序。
-    function renderHand(tiles) {
-        const isTsumo = tiles.length % 3 === 2
-        const drawn = isTsumo ? tiles[tiles.length - 1] : null
-        const ordered = sortTiles(isTsumo ? tiles.slice(0, -1) : tiles.slice())
-
-        handDom.innerHTML = ''
-        const addItem = (label, isDrawn) => {
-            const el = document.createElement('div')
-            el.className = isDrawn ? 'item drawn' : 'item'
-            el.dataset.label = label
-            el.textContent = label   // 牌名始终填上，显隐交给 CSS
-            if (isDrawn) el.dataset.drawn = 'true'
-            handDom.appendChild(el)
-        }
-        ordered.forEach(label => addItem(label, false))
-        if (isTsumo) addItem(drawn, true)
-    }
-
-    // 渲染名次：根据 data 算 top3，在已渲染的手牌格子里找到对应的牌上色显示分数。
-    // 同名牌只高亮最左的第一张。tsumogiri=true 时摸牌独占 rank0 金色。
-    function renderRank(data) {
-        const values = (data && data.values) || []
-        const items = [...handDom.children]
-
-        // 清除上一次的名次样式，牌名复原（显隐由 CSS 控制）
-        items.forEach(el => {
-            el.className = el.dataset.drawn ? 'item drawn' : 'item'
-            el.textContent = el.dataset.label
-        })
-        if (values.length === 0) return
-
-        // softmax: 把 q_value 转成百分制 score（和为 100）
-        const qs = values.map(v => v.q_value)
-        const maxQ = Math.max(...qs)
-        const exps = qs.map(q => Math.exp(q - maxQ))
-        const sumExp = exps.reduce((a, b) => a + b, 0)
-        values.forEach((v, i) => v.score = exps[i] / sumExp * 100)
-
-        // 非打牌类操作（吃碰杠立直等）渲染到手牌上方
-        renderActions(values)
-
-        const top3 = [...values].sort((a, b) => b.score - a.score).slice(0, 3)
-        const used = new Set()
-        const decorate = (el, rank, v) => {
-            used.add(el)
-            el.classList.add('rank' + rank)
-            el.textContent = v.label + ' ' + v.score.toFixed(1)
-        }
-
-        // tsumogiri：切的就是摸牌，强制把 rank0 高亮到摸牌格子上
-        const drawnEl = items.find(el => el.dataset.drawn)
-        if (data.tsumogiri && drawnEl) {
-            const v = values.find(x => x.label === drawnEl.dataset.label)
-            decorate(drawnEl, 0, v || { label: drawnEl.dataset.label, score: 0 })
-        }
-
-        // 其余 top3：从左至右找到第一张未占用的同名牌上色
-        top3.forEach((v, rank) => {
-            if (used.has(drawnEl) && v.label === drawnEl.dataset.label) return
-            const el = items.find(x => !used.has(x) && x.dataset.label === v.label)
-            if (el) decorate(el, rank, v)
-        })
-    }
-
-    // 渲染非打牌类操作：从 values 里挑出 action label，按分数从高到低
-    // 显示在手牌上方，分数最高的标金色。没有则清空。
-    function renderActions(values) {
-        const actions = values
-            .filter(v => v.label in ACTION_NAMES)
-            .sort((a, b) => b.score - a.score)
-
-        actionsDom.innerHTML = ''
-        if (actions.length === 0) return
-
-        const best = actions[0].label
-        actions.forEach(v => {
-            const el = document.createElement('div')
-            el.className = v.label === best ? 'action best' : 'action'
-            el.textContent = ACTION_NAMES[v.label] + ' ' + v.score.toFixed(1)
-            actionsDom.appendChild(el)
-        })
-    }
-
-    renderHand(hand)
-    renderRank(mockData)
-
-    // 从手牌里移除一张牌（仅移除第一张匹配的）
-    function removeTile(tile) {
-        const i = hand.indexOf(tile)
-        if (i !== -1) hand.splice(i, 1)
-    }
-
-    // 根据 mjai 事件更新手牌，只处理自己（actor === myId）的操作。
-    // start_kyoku 用来锁定 myId：tehais 里只有自己的那手不是全 '?'。
-    function applyMjai(msg) {
-        if (msg.type === 'start_kyoku') {
-            const tehais = msg.tehais || []
-            myId = tehais.findIndex(t => t.some(p => p !== '?'))
-            hand = tehais[myId].slice()
-            renderHand(hand)
-            return
-        }
-
-        if (myId === null || msg.actor !== myId) return
-
-        switch (msg.type) {
-            case 'tsumo':
-                // 摸牌：加到末尾，renderHand 会把最后一张当作刚摸到的牌
-                hand.push(msg.pai)
-                break
-            case 'dahai':
-                removeTile(msg.pai)
-                break
-            case 'chi':
-            case 'pon':
-            case 'daiminkan':
-            case 'ankan':
-                // 鸣牌/杠：consumed 是手里参与的牌；pai（他人弃牌）不在手中
-                msg.consumed.forEach(removeTile)
-                break
-            case 'kakan':
-                removeTile(msg.pai)
-                break
-            default:
-                return
-        }
         renderHand(hand)
-    }
+        renderRank(mockData)
 
-    ws.onmessage = (e) => {
-        const data = JSON.parse(e.data)
-        if (data.type === 'mjai') {
-            applyMjai(data.data)
-        } else if (data.type === 'ai') {
-            console.log(data.data)
-            renderRank(data.data)
+        // 从手牌里移除一张牌（仅移除第一张匹配的）
+        function removeTile(tile) {
+            const i = hand.indexOf(tile)
+            if (i !== -1) hand.splice(i, 1)
         }
-    }
-</script>
 
+        // 根据 mjai 事件更新手牌，只处理自己（actor === myId）的操作。
+        // start_kyoku 用来锁定 myId：tehais 里只有自己的那手不是全 '?'。
+        function applyMjai(msg) {
+            if (msg.type === 'start_kyoku') {
+                const tehais = msg.tehais || []
+                myId = tehais.findIndex((t) => t.some((p) => p !== '?'))
+                hand = tehais[myId].slice()
+                lastDahai = null
+                renderHand(hand)
+                return
+            }
+
+            // 任何玩家打牌都记录，吃用到的是别人打出的这张牌
+            if (msg.type === 'dahai') {
+                lastDahai = msg.pai
+            }
+
+            if (myId === null || msg.actor !== myId) return
+
+            switch (msg.type) {
+                case 'tsumo':
+                    // 摸牌：加到末尾，renderHand 会把最后一张当作刚摸到的牌
+                    hand.push(msg.pai)
+                    break
+                case 'dahai':
+                    removeTile(msg.pai)
+                    break
+                case 'chi':
+                case 'pon':
+                case 'daiminkan':
+                case 'ankan':
+                    // 鸣牌/杠：consumed 是手里参与的牌；pai（他人弃牌）不在手中
+                    msg.consumed.forEach(removeTile)
+                    break
+                case 'kakan':
+                    removeTile(msg.pai)
+                    break
+                default:
+                    return
+            }
+            renderHand(hand)
+        }
+
+        ws.onmessage = (e) => {
+            const data = JSON.parse(e.data)
+            if (data.type === 'mjai') {
+                applyMjai(data.data)
+            } else if (data.type === 'ai') {
+                console.log(data.data)
+                renderRank(data.data)
+            }
+        }
+    </script>
 </html>
