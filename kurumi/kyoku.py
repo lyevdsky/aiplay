@@ -1,10 +1,11 @@
 import time
 import cv2
 from util import has_template, ocr_digits, find_contour, stable_func, polling
-from screenshot import get_screenshot, set_screenshot
+from screenshot import get_screenshot, save_img_q, set_screenshot
 from gamestate import get_gamestate
 from config import *
 from tile import check_tile
+from hand import rec_hand
 
 def get_honba(screenshot):
     x,y,w,h = HONBA_REGION
@@ -165,13 +166,8 @@ def wait_new_kyoku():
     try:
         polling(check_new_kyoku, POLLING_INTERVAL, timeout = 300)
         # 等待手牌准备就绪
-        while True:
-            img = get_screenshot(HAND_FIRST_REGION)
-            tile = check_tile(img, debug=False)
-            if tile is not None:
-                time.sleep(0.2)
-                return True
-            time.sleep(1)
+        polling(rec_hand, POLLING_INTERVAL, timeout = None)
+        return True
     except:
         return False
 # set_screenshot('./logs/20260617_115125/0009.jpg')

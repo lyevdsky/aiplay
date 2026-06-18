@@ -12,7 +12,7 @@ clients = set()
 
 @app.get("/")
 def index():
-    with open("kurumi_overlay.html") as f:
+    with open("kurumi_overlay.html", "r", encoding="utf-8") as f:
         return HTMLResponse(f.read())
 
 @app.websocket("/ws")

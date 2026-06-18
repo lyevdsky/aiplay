@@ -7,7 +7,7 @@ from gamestate import get_gamestate
 from util import concat_images_horizontal, create_polling_sync, stable_func
 from screenshot import get_screenshot, set_screenshot
 from config import *
-from tile import predict_tile, check_tile
+from tile import check_tile
 
 def rec_hand():
     img = get_screenshot()
@@ -17,7 +17,9 @@ def rec_hand():
     for i in range(13):
         offset = i * w
         tile_img = img[y:y + h,x + offset:x + offset + w]
-        tile = predict_tile(tile_img)
+        tile = check_tile(tile_img)
+        if tile is None:
+            return None
         tiles.append(tile)
         imgs.append(tile_img)
     # concat_images_horizontal(imgs, 10, debug = True)
@@ -40,5 +42,6 @@ def rec_tsumo():
 
 check_tsumo = stable_func(rec_tsumo)
 
-# set_screenshot('./screenshots/173.png')
-# rec_hand()
+# set_screenshot('./logs/20260618_095628/0009.jpg')
+# res = rec_hand()
+# print(res)

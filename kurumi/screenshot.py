@@ -14,7 +14,7 @@ if sys.platform == "win32":
     region = (0, 0, 2560, 1440)
     camera.start(target_fps=60)
 
-SHOW_SCREENSHOW = False
+SHOW_SCREENSHOW = True
 img_q = deque(maxlen=10)
 screenshot = {
     'img': None,
@@ -27,14 +27,13 @@ fps = cap.get(cv2.CAP_PROP_FPS)
 duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps   # 视频总时长（秒）
 
 def video_capture():
-    video_start_ms = 106000
-    # video_start_ms = 0
-
+    video_start_ms = 0
+    # video_start_ms = 54000
     if not hasattr(video_capture, '_count'):
         video_capture._count = 0
         video_capture._start_time = time.time()
     if True:
-        ms = video_start_ms + video_capture._count * 50 # (1000 * POLLING_INTERVAL)
+        ms = video_start_ms + video_capture._count * (1000 * POLLING_INTERVAL)
         video_capture._count += 1
     else:
         ratio = 0.8
@@ -62,7 +61,7 @@ def video_capture():
 #     return img
 
 def capture():
-    # return video_capture()
+    return video_capture()
     frame = camera.get_latest_frame()
     return frame
 
