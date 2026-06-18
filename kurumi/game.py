@@ -33,7 +33,7 @@ class Phase(Enum):
 # settle
 # ai reach dahai 
 # ai print less !
-# new kyoku gameloop !!!!!!!!!!!
+# new kyoku gameloop !!!!!!!!!!! TODO
 # 听牌提示 认为打牌问题 o
 # 打牌太快问题。 !
 # ui -
@@ -73,7 +73,6 @@ class Game:
         init_gamestate()
         state = self.state
         kyoku_info = rec_kyoku_info()
-        print("Kyoku info:", kyoku_info)
         if kyoku_info['bakaze'] == 'E':
             kyoku = kyoku_info['kyokunum']
         elif kyoku_info['bakaze'] == 'S':
@@ -111,6 +110,7 @@ class Game:
         state['scores'] = [id_to_score[i] for i in state['players']]
 
         hands = rec_hand()
+        print('hand: ', hands)
         tehais = [['?']* 13, ['?']* 13, ['?']* 13, ['?']* 13]
         tehais[state['my_id']] = hands 
         self.notify({

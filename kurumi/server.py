@@ -77,6 +77,7 @@ def run_one_game():
     """在主线程跑一局，异常被捕获后存图并记录，不向上抛出。"""
     try:
         game = Game(listener=lambda data: send_message(data))
+        print('run one game')
         game.main()
     except Exception as e:
         try:
@@ -95,7 +96,7 @@ thread = threading.Thread(target=start_server, daemon=True)
 thread.start()
 
 # 等待服务器启动
-time.sleep(10)
+time.sleep(3)
 
 # 主线程跑 supervisor：等 API 发来启动信号 -> 跑一局 -> 回到空闲
 print("[SERVER] 就绪，等待 POST /game/start 启动游戏")

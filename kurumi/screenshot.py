@@ -13,22 +13,22 @@ if sys.platform == "win32":
     frame = camera.get_latest_frame() 
     region = (0, 0, 2560, 1440)
     camera.start(target_fps=60)
-
-SHOW_SCREENSHOW = True
+#  [AI] {'type': 'dahai', 'actor': 0, 'pai': 'W', 'tsumogiri': False, 'meta': {'q_values': [-7.5182686, -7.915329, -6.277882, -2.5682902, -7.593501, -8.1602955, -8.589959, -6.221748, 0.061752915, -6.860277, -3.2534614], 'mask_bits': 3852541962, 'is_greedy': True, 'batch_size': 1, 'eval_time_ns': 33686500, 'shanten': 3, 'at_furiten': False}, 'values': [{'label': '3z', 'q_value': 0.061752915}, {'label': '8p', 'q_value': -2.5682902}, {'label': '5z', 'q_value': -3.2534614}, {'label': '9s', 'q_value': -6.221748}, {'label': '5p', 'q_value': -6.277882}, {'label': '4z', 'q_value': -6.860277}, {'label': '2m', 'q_value': -7.5182686}, {'label': '4s', 'q_value': -7.593501}, {'label': '4m', 'q_value': -7.915329}, {'label': '6s', 'q_value': -8.1602955}, {'label': '7s', 'q_value': -8.589959}]} 
+SHOW_SCREENSHOW = False
 img_q = deque(maxlen=10)
 screenshot = {
     'img': None,
     'time': 0
 }
 
-cap = cv2.VideoCapture("./video/full.mp4")
+cap = cv2.VideoCapture("./video/full2.mp4")
 # cap = cv2.VideoCapture("./video/meld_self_kakan.mp4")
 fps = cap.get(cv2.CAP_PROP_FPS)
 duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps   # 视频总时长（秒）
 
 def video_capture():
     video_start_ms = 0
-    # video_start_ms = 54000
+    video_start_ms = 22000
     if not hasattr(video_capture, '_count'):
         video_capture._count = 0
         video_capture._start_time = time.time()
@@ -61,7 +61,7 @@ def video_capture():
 #     return img
 
 def capture():
-    return video_capture()
+    # return video_capture()
     frame = camera.get_latest_frame()
     return frame
 

@@ -22,7 +22,7 @@ class Bot:
             event = format_input(event)
             eventstr = json.dumps(event)
             if reaction := self.ai.react(eventstr):
-                print(reaction, flush=True)
+                # print(reaction, flush=True)
                 return format_output(json.loads(reaction))
             else:
                 return { 'type':'none' }
