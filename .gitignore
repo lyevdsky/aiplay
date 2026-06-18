@@ -53,3 +53,6 @@ runs/
 yolo/dataset
 kurumi/imgs
 kurumi/video
+kurumi/ref/yolo
+
+yolo/yolo26n.pt

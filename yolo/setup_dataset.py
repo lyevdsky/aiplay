@@ -3,8 +3,8 @@ import shutil
 from pathlib import Path
 
 # 配置
-SRC_DIR = Path("./kurumi/ref")   # 改成你的原始图片文件夹路径
-TRAIN_DIR = Path("./yolo/dataset/train")
+SRC_DIR = Path("ref")   # 改成你的原始图片文件夹路径
+TRAIN_DIR = Path("dataset/train")
 
 
 for img_path in sorted(SRC_DIR.glob("*.png")):

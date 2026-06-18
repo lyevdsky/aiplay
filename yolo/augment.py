@@ -1,8 +1,11 @@
 from pathlib import Path
 from PIL import Image
+import shutil
 import random
 import numpy as np
 import cv2
+
+TRAIN_DIR = Path("dataset/train")
 
 def augment_tile(src_path, out_dir, count=80):
     img = Image.open(src_path).convert("RGB")
@@ -69,7 +72,7 @@ for class_dir in src_root.iterdir():
 print("增强完成！")
 
 # 复制 hard_examples 到 dataset/train
-hard_root = Path("hard_examples")
+hard_root = Path("./hard_examples")
 if hard_root.exists():
     for class_dir in hard_root.iterdir():
         if not class_dir.is_dir():
