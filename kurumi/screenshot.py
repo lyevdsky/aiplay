@@ -21,7 +21,7 @@ screenshot = {
     'time': 0
 }
 
-cap = cv2.VideoCapture("./video/full2.mp4")
+cap = cv2.VideoCapture("./video/full.mp4")
 # cap = cv2.VideoCapture("./video/meld_self_kakan.mp4")
 fps = cap.get(cv2.CAP_PROP_FPS)
 duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps   # 视频总时长（秒）
