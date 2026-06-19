@@ -78,7 +78,6 @@ def get_dora_marker(screenshot, index = 0):
     x,y,w,h = DORA_FIRST_REGION
     x = x + index * w
     doraimg = screenshot[y:y+h,x:x+w]
-    cv2.imshow('doraimg', doraimg)
     tile = check_tile(doraimg)
     return tile
 
@@ -167,6 +166,7 @@ def wait_new_kyoku():
         polling(check_new_kyoku, POLLING_INTERVAL, timeout = 300)
         # 等待手牌准备就绪
         polling(rec_hand, POLLING_INTERVAL, timeout = None)
+        time.sleep(0.5)
         return True
     except:
         return False

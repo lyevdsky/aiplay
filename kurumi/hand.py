@@ -17,7 +17,7 @@ def rec_hand():
     for i in range(13):
         offset = i * w
         tile_img = img[y:y + h,x + offset:x + offset + w]
-        tile = check_tile(tile_img)
+        tile = check_tile(tile_img, autocrop = False, debug=False)
         if tile is None:
             return None
         tiles.append(tile)
@@ -42,6 +42,6 @@ def rec_tsumo():
 
 check_tsumo = stable_func(rec_tsumo)
 
-# set_debug_screenshot('./logs/20260618_095628/0009.jpg')
+# set_debug_screenshot('./logs/20260619_224947/0008.jpg')
 # res = rec_hand()
 # print(res)

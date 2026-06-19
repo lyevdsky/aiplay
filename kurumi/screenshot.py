@@ -14,18 +14,18 @@ if sys.platform == "win32":
     region = (0, 0, 2560, 1440)
     camera.start(target_fps=60)
 
-SHOW_SCREENSHOW = True
+SHOW_SCREENSHOW = False
 img_q = deque(maxlen=10)
 _debug_screenshot = None
 
-cap = cv2.VideoCapture("./video/full.mp4")
+cap = cv2.VideoCapture("./video/kyo.mp4")
 # cap = cv2.VideoCapture("./video/meld_self_kakan.mp4")
 fps = cap.get(cv2.CAP_PROP_FPS)
 duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps   # 视频总时长（秒）
 
 def video_capture():
     video_start_ms = 0
-    video_start_ms = 375000
+    # video_start_ms = 375000
     if not hasattr(video_capture, '_count'):
         video_capture._count = 0
         video_capture._start_time = time.time()
@@ -52,10 +52,10 @@ def get_screenshot(region = None):
     if _debug_screenshot is not None:
         shot = _debug_screenshot
     else:
-        shot = video_capture()
-        # shot = camera.get_latest_frame()
+        # shot = video_capture()
+        shot = camera.get_latest_frame()
     
-    img_q.append(shot)
+    img_q.append(shot) # TODO 增加caller 的name + line num
 
     if region is not None:
         x,y,w,h = region
@@ -75,8 +75,11 @@ def get_screenshot(region = None):
 
     return shot
 
-def save_img_q():
-    folder_name = './logs/' + datetime.now().strftime("%Y%m%d_%H%M%S")
+def save_img_q(path = None):
+    if path == None:
+        folder_name = './logs/' + datetime.now().strftime("%Y%m%d_%H%M%S")
+    else:
+        folder_name = path
     os.makedirs(folder_name, exist_ok=True)
 
     # 2. 遍历队列，保存图片

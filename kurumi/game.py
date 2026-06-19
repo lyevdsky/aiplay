@@ -406,8 +406,8 @@ _state_full_1 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_mark
 if __name__ == "__main__":
     try:
         game = Game()
-        game.start_with_state(_state_full_3)
-        game.phase = Phase.Tsumo
+        # game.start_with_state(_state_full_3)
+        # game.phase = Phase.Tsumo
         game.main()
     except Exception as e:
         save_img_q()

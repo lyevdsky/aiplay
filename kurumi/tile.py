@@ -80,20 +80,23 @@ def normalize_direction(tileimg, player):
     
     return tileimg, direction
 
-def check_tile(img, player = 'self', min_area=1500, threshold=0.75, return_dict = False, debug=False):
-    # 先找亮白，再尝试模切的灰白。避免找的牌面矩形不对，导致normalize_direction判断有误
-    cs = find_contour(img, WHILE_HSV, min_area)
-    if len(cs) == 0:
-        cs = find_contour(img, TILE_WHILE_HSV, min_area)
+def check_tile(img, player = 'self', min_area=1500, threshold=0.8, return_dict = False, autocrop = True, debug=False):
+    if autocrop:
+        # 先找亮白，再尝试模切的灰白。避免找的牌面矩形不对，导致normalize_direction判断有误
+        cs = find_contour(img, WHILE_HSV, min_area)
         if len(cs) == 0:
-            return None
+            cs = find_contour(img, TILE_WHILE_HSV, min_area)
+            if len(cs) == 0:
+                return None
 
-    x,y,w,h = cv2.boundingRect(cs[0])
-    tileimg = img[y:y+h,x:x+w]
+        x,y,w,h = cv2.boundingRect(cs[0])
+        tileimg = img[y:y+h,x:x+w]
+    else:
+        tileimg = img
 
     normalized_img, direction = normalize_direction(tileimg, player)
+
     if debug:
-        print(f'width: {w}, height: {h}')
         cv2.imshow('check_tile', normalized_img)
         cv2.waitKey(0)
         cv2.destroyWindow('check_tile')
