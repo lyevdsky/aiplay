@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import math
 from gamestate import get_gamestate
-from screenshot import get_screenshot, save_img_q, set_screenshot
+from screenshot import get_screenshot, save_img_q, set_debug_screenshot
 from util import concat_images_horizontal, find_contour, stable_func
 from config import *
 from tile import check_tile
@@ -127,7 +127,7 @@ def check_dahai_claimed():
     return result is None
 
 # for i in range(10):
-#     set_screenshot(f'./logs/20260617_165923/000{i}.jpg')
+#     set_debug_screenshot(f'./logs/20260617_165923/000{i}.jpg')
 #     res = rec_dahai('self', 7, None)
 #     print(res)
 # print(rec_tsumo())

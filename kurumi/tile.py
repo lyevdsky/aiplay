@@ -139,7 +139,7 @@ def check_tiles(img, player = 'self', min_area=1500, threshold=0.8, debug=False)
 
     return result
 
-# TODO m1 0.67
+
 # img = cv2.imread('./logs/error/yolo_6p2.png')
 # predict_tile(img, debug=True)
 # x,y,w,h = (1612,433,104,78)

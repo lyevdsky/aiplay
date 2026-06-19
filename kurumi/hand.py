@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 from gamestate import get_gamestate
 from util import concat_images_horizontal, create_polling_sync, stable_func
-from screenshot import get_screenshot, set_screenshot
+from screenshot import get_screenshot, set_debug_screenshot
 from config import *
 from tile import check_tile
 
@@ -42,6 +42,6 @@ def rec_tsumo():
 
 check_tsumo = stable_func(rec_tsumo)
 
-# set_screenshot('./logs/20260618_095628/0009.jpg')
+# set_debug_screenshot('./logs/20260618_095628/0009.jpg')
 # res = rec_hand()
 # print(res)

@@ -1,7 +1,7 @@
 import time
 import cv2
 from util import has_template, ocr_digits, find_contour, stable_func, polling
-from screenshot import get_screenshot, save_img_q, set_screenshot
+from screenshot import get_screenshot, save_img_q, set_debug_screenshot
 from gamestate import get_gamestate
 from config import *
 from tile import check_tile
@@ -147,7 +147,6 @@ def _check_player_change():
     if p is not None:
         pid = gamestate['player_to_id'][p]
         if pid != gamestate['current_player']:
-            print('player change to: ', p)
             return pid
     return None
 
@@ -170,7 +169,7 @@ def wait_new_kyoku():
         return True
     except:
         return False
-# set_screenshot('./logs/20260617_115125/0009.jpg')
+# set_debug_screenshot('./logs/20260617_115125/0009.jpg')
 # wait_new_kyoku()
 # res = get_active_player()
 # print(res)

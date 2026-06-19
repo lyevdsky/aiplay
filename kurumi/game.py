@@ -29,18 +29,11 @@ class Phase(Enum):
     StartGame = 7
 
 # TODO
-# 流局 判断 x
-# settle
-# ai reach dahai 
 # ai print less !
 # new kyoku gameloop !!!!!!!!!!! TODO
 # 听牌提示 认为打牌问题 o
 # 打牌太快问题。 !
-# ui -
 # 杠 哪个问题
-# ai none 时有可能是鸣牌跳过  x
-# ai result 还要展示概率 x
-# 自摸 x
 def print_with_color(text, color = 'green'):
     if color == 'green':
         print(f'\033[32m [GAME] {text} \033[0m')
@@ -267,7 +260,7 @@ class Game:
 
             player = check_player_change()
             if player is not None:
-                # print_with_color(f'切换至玩家 {player}')
+                print_with_color(f'切换至玩家 {player}')
                 return player
             return None
         
@@ -403,7 +396,7 @@ def on_press(key):
 listener = keyboard.Listener(on_press=on_press)
 listener.start()
 
-_state_full_3 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_markers': ['5s'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 0, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 6, 'riichi_index': None, 'melds': [{'type': 'chi'}], 'riichi': False}, {'kawa_index': 6, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 5, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 5, 'riichi': False, 'riichi_index': None, 'melds': [{"type": 'chi'}]}], 'my_id': 0}
+_state_full_3 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_markers': ['5s'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 0, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 13, 'riichi_index': None, 'melds': [{'type': 'chi'}], 'riichi': False}, {'kawa_index': 12, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 5, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 5, 'riichi': False, 'riichi_index': None, 'melds': [{"type": 'chi'}]}], 'my_id': 0}
 _state_full_2 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_markers': ['5s'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 0, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 2, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 2, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 2, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 2, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
 _state_full_1 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_markers': ['5s'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 3, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 3, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 3, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 3, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 2, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
 # _state3 = {'honba': '', 'kyotaku': '', 'bakaze': 'E', 'kyoku': 4, 'dora_markers': ['1p'], 'scores': ['11300', '21000', '7', '33700'], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 3, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 0, 'player_info': [{'kawa_index': 13, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 12, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 13, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['2p', '2p'], 'tile': '2p'}, {'type': 'ankan'}]}, {'kawa_index': 14, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['0m', '5m'], 'tile': '5m'}, {'type': 'ankan'}, {'type': 'pon', 'consumed': ['8p', '8p'], 'tile': '8p'}]}], 'my_id': 2}
@@ -412,8 +405,8 @@ _state_full_1 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_mark
 if __name__ == "__main__":
     try:
         game = Game()
-        # game.start_with_state(_state_full_1)
-        # game.phase = Phase.Tsumo
+        game.start_with_state(_state_full_3)
+        game.phase = Phase.Dahai
         game.main()
     except Exception as e:
         save_img_q()

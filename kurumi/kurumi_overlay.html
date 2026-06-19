@@ -3,11 +3,11 @@
         <style>
             /* Mahjong tile sprite — auto-generated */
             .tile {
-            width: 126px;
-            height: 156px;
-            background-image: url("./imgs/tiles_sprite.png");
-            background-repeat: no-repeat;
-            display: inline-block;
+                width: 126px;
+                height: 156px;
+                background-image: url("./imgs/tiles_sprite.png");
+                background-repeat: no-repeat;
+                display: inline-block;
             }
 
             .tile-m0 { background-position: 0 0; }
@@ -110,7 +110,7 @@
                 justify-content: center;
                 align-items: center;
                 border-radius: 8px;
-                font-size: 18px;
+                font-size: 24px;
                 font-weight: bold;
                 white-space: nowrap;
                 transform: translateX(50px);
@@ -124,7 +124,7 @@
             .hand {
                 position: absolute;
                 bottom: 0;
-                left: 370px;
+                left: 372px;
                 display: flex;
                 flex-direction: row;
             }
@@ -152,6 +152,31 @@
                 background: rgb(65, 130, 206);
                 color: #fff;
                 border: 1px solid rgb(166, 208, 255);
+            }
+            /* 底部连接状态条：样式与 rank1/2 一致（蓝底白字） */
+            .status {
+                position: fixed;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                height: 40px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-sizing: border-box;
+                font-size: 24px;
+                font-weight: bold;
+                background: rgb(65, 130, 206);
+                color: #fff;
+            }
+            /* 状态条默认隐藏，由 <html> 上的状态类控制显示对应那条；
+               playing 时不显示任何提示 */
+            .status {
+                display: none;
+            }
+            html.connecting .status.connecting,
+            html.ready .status.ready {
+                display: flex;
             }
             /* 操作：背景色加在文本层(.action-text)，外层只占位不上色 */
             .action.rank0,
@@ -203,7 +228,7 @@
         </style>
     </head>
     <body>
-        <div class="bg"></div>
+        <!-- <div class="bg"></div> -->
         <div class="actions" id="actions">
             <div class="action" data-label="none" data-name="跳过"><span class="action-text">跳过</span></div>
             <div class="action" data-label="hora" data-name="和"><span class="action-text">和</span></div>
@@ -214,6 +239,8 @@
             <div class="action" data-label="ryukyoku" data-name="流局"><span class="action-text">流局</span></div>
         </div>
         <div class="hand" id="hand"></div>
+        <div class="status connecting">正在尝试连接...</div>
+        <div class="status ready">已成功连接</div>
     </body>
     <script>
         const DEBUG = true // true：显示所有手牌；false：只显示 top3
@@ -258,10 +285,41 @@
                 { label: '7p', q_value: -7.651653 },
             ],
         }
-        const ws = new WebSocket('ws://localhost:5500/ws')
+        // WebSocket 自动重连：未连接时每 1s 尝试一次，直到连上；断开后继续重试。
+        // 连接状态用 <html> 上的类名表示：connecting（尝试中）/ ready（已连）。
+        let ws = null
+        const setStatus = (cls) => {
+            document.documentElement.classList.remove('connecting', 'ready', 'playing')
+            document.documentElement.classList.add(cls)
+        }
+        function connect() {
+            setStatus('connecting')
+            ws = new WebSocket('ws://localhost:5500/ws')
+            ws.onopen = () => {
+                setStatus('ready')
+            }
+            ws.onmessage = (e) => {
+                const data = JSON.parse(e.data)
+                console.log('message: ', data)
+                if (data.type === 'mjai') {
+                    applyMjai(data.data)
+                } else if (data.type === 'ai') {
+                    if (hand.length === 0) return
+                    console.log(data.data)
+                    renderRank(data.data)
+                }
+            }
+            ws.onclose = () => {
+                setStatus('connecting')
+                setTimeout(connect, 1000)
+            }
+            // onerror 后浏览器会接着触发 onclose，由 onclose 统一重连
+            ws.onerror = () => ws.close()
+        }
+        connect()
         const handDom = document.getElementById('hand')
         const actionsDom = document.getElementById('actions')
-        if (DEBUG) document.documentElement.classList.add('debug')
+        // if (DEBUG) document.documentElement.classList.add('debug')
 
         function sortTiles(tiles) {
             const suitOrder = { m: 100, p: 200, s: 300, z: 400 }
@@ -325,11 +383,22 @@
         function renderRank(data) {
             const values = (data && data.values) || []
             const items = [...handDom.children]
+            const actionItems = [...actionsDom.children]
 
-            // 清除上一次的名次样式，牌名复原（显隐由 CSS 控制）
+            // 操作格子文本在内层 .action-text，手牌格子文本在自身
+            const setText = (el, text) => {
+                const target = el.querySelector('.action-text') || el
+                target.textContent = text
+            }
+
+            // 清除上一次的名次：移除 rank0/1/2，牌名/操作名复原（显隐由 CSS 控制）
             items.forEach((el) => {
                 el.className = el.dataset.drawn ? 'item drawn' : 'item'
                 el.textContent = el.dataset.label
+            })
+            actionItems.forEach((el) => {
+                el.className = 'action'
+                setText(el, el.dataset.name)
             })
             if (values.length === 0) return
 
@@ -339,12 +408,6 @@
             const exps = qs.map((q) => Math.exp(q - maxQ))
             const sumExp = exps.reduce((a, b) => a + b, 0)
             values.forEach((v, i) => (v.score = (exps[i] / sumExp) * 100))
-
-            // 操作格子文本在内层 .action-text，手牌格子文本在自身
-            const setText = (el, text) => {
-                const target = el.querySelector('.action-text') || el
-                target.textContent = text
-            }
 
             // 牌名 → 雪碧图 class。数牌 0 表示红五，对应雪碧图的 m0/p0/s0；
             // 1-9 对应 x1-x9；字牌 1z-7z 对应 z1-z7。
@@ -367,13 +430,6 @@
                     )
                     .join('') +
                 '</span>'
-
-            // 重置固定的操作格子：去掉名次类、文本复原（显隐由 CSS 控制）
-            const actionItems = [...actionsDom.children]
-            actionItems.forEach((el) => {
-                el.className = 'action'
-                setText(el, el.dataset.name)
-            })
 
             // 取前三（不合并吃，3 个吃也实打实占 3 个名次）；
             // floor 后 < 1 的剔除，故实际可能只剩 top2/top1
@@ -437,6 +493,7 @@
                 myId = tehais.findIndex((t) => t.some((p) => p !== '?'))
                 hand = tehais[myId].slice()
                 lastDahai = null
+                setStatus('playing')   // 进入对局，隐藏连接提示条
                 renderHand(hand)
                 return
             }
@@ -473,20 +530,10 @@
         }
 
         if (DEBUG) {
-            hand = [ '2m', '3m', '5m', '1p', '2p', '3p', '5p', '3s', '9s', '9s', '1z', '1z', '2z', '2z' ]
+            hand = ['2m', '4m', '4m', '5p', '8p','4s', '7s', '7s', '9s', '3z', '4z', '4z', '5z', '6s']
+            // hand = [ '2m', '3m', '5m', '1p', '2p', '3p', '5p', '3s', '9s', '9s', '1z', '1z', '2z', '2z' ]
             renderHand(hand)
-            renderRank(mockData)
-        }
-
-        ws.onmessage = (e) => {
-            const data = JSON.parse(e.data)
-            if (data.type === 'mjai') {
-                applyMjai(data.data)
-            } else if (data.type === 'ai') {
-                if (hand.length === 0) return
-                console.log(data.data)
-                renderRank(data.data)
-            }
+            renderRank({'type': 'dahai', 'actor': 0, 'pai': 'W', 'tsumogiri': false, 'meta': {'q_values': [-7.5182686, -7.915329, -6.277882, -2.5682902, -7.593501, -8.1602955, -8.589959, -6.221748, 0.061752915, -6.860277, -3.2534614], 'mask_bits': 3852541962, 'is_greedy': true, 'batch_size': 1, 'eval_time_ns': 33686500, 'shanten': 3, 'at_furiten': false}, 'values': [{'label': '3z', 'q_value': 0.061752915}, {'label': '8p', 'q_value': -2.5682902}, {'label': '5z', 'q_value': -3.2534614}, {'label': '9s', 'q_value': -6.221748}, {'label': '5p', 'q_value': -6.277882}, {'label': '4z', 'q_value': -6.860277}, {'label': '2m', 'q_value': -7.5182686}, {'label': '4s', 'q_value': -7.593501}, {'label': '4m', 'q_value': -7.915329}, {'label': '6s', 'q_value': -8.1602955}, {'label': '7s', 'q_value': -8.589959}]} )
         }
     </script>
 </html>

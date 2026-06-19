@@ -3,7 +3,7 @@ import time
 import cv2
 import numpy as np
 from gamestate import get_gamestate
-from screenshot import get_screenshot, set_screenshot
+from screenshot import get_screenshot, set_debug_screenshot
 from tile import check_tiles
 from util import stable_func
 from config import TILE_WHILE_HSV, WHILE_HSV
@@ -20,7 +20,7 @@ ACROSS_NUM = [0, 1]
 
 REC_PREV_W_H = (200, 250) # w h
 REC_SELF_W_H = (400, 150)
-# TODO self 对自己的暗杠，明杠，判断，区间不够大
+
 def computed_next_point(player, melds):
     a = 0
     b = 0
@@ -177,10 +177,10 @@ def rec_new_meld():
 
 # for i in range(10):
 #     print(i)
-#     set_screenshot(f'./logs/20260615_133324/000{i}.jpg')
+#     set_debug_screenshot(f'./logs/20260615_133324/000{i}.jpg')
 #     rec_new_meld()
 
-# set_screenshot('./logs/20260617_154527/0009.jpg')
+# set_debug_screenshot('./logs/20260617_154527/0009.jpg')
 # res = rec_new_meld()
 # print(res)
 
