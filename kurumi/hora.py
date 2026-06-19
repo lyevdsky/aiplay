@@ -27,6 +27,14 @@ def is_ryukyoku():
 
 check_ryukyoku = stable_func(is_ryukyoku)
 
+ 
+# check_interrupt: True
+# check hora:  True
+# check ryukyoku:  False
+# check_interrupt: True
+# check hora:  False
+# check ryukyoku:  False
+# TODO ctrl +c 退出不了
 def check_interrupt():
     screenshot = get_screenshot()
     oya = get_oya(screenshot)

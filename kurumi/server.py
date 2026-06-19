@@ -80,6 +80,7 @@ def run_one_game():
         print('run one game')
         game.main()
     except Exception as e:
+        # TODO send_message({ type: 'error' })
         try:
             save_img_q()
         except Exception as save_err:

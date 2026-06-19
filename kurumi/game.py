@@ -30,10 +30,12 @@ class Phase(Enum):
 
 # TODO
 # ai print less !
-# new kyoku gameloop !!!!!!!!!!! TODO
+# new kyoku gameloop !!!!!!!!!!! TODO 偶尔出现无法ctrl +c退出问题
 # 听牌提示 认为打牌问题 o
 # 打牌太快问题。 !
 # 杠 哪个问题
+# 窗口最大化
+
 def print_with_color(text, color = 'green'):
     if color == 'green':
         print(f'\033[32m [GAME] {text} \033[0m')
@@ -405,8 +407,8 @@ _state_full_1 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_mark
 if __name__ == "__main__":
     try:
         game = Game()
-        game.start_with_state(_state_full_3)
-        game.phase = Phase.Dahai
+        # game.start_with_state(_state_full_3)
+        # game.phase = Phase.Dahai
         game.main()
     except Exception as e:
         save_img_q()

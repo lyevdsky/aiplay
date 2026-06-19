@@ -14,7 +14,7 @@ if sys.platform == "win32":
     region = (0, 0, 2560, 1440)
     camera.start(target_fps=60)
 
-SHOW_SCREENSHOW = True
+SHOW_SCREENSHOW = False
 img_q = deque(maxlen=10)
 _debug_screenshot = None
 
@@ -52,8 +52,8 @@ def get_screenshot(region = None):
     if _debug_screenshot is not None:
         return _debug_screenshot
 
-    shot = video_capture()
-    # shot = camera.get_latest_frame()
+    # shot = video_capture()
+    shot = camera.get_latest_frame()
     
     img_q.append(shot)
 
