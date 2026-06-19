@@ -78,6 +78,7 @@ def get_dora_marker(screenshot, index = 0):
     x,y,w,h = DORA_FIRST_REGION
     x = x + index * w
     doraimg = screenshot[y:y+h,x:x+w]
+    cv2.imshow('doraimg', doraimg)
     tile = check_tile(doraimg)
     return tile
 
@@ -169,14 +170,15 @@ def wait_new_kyoku():
         return True
     except:
         return False
-# set_debug_screenshot('./logs/20260617_115125/0009.jpg')
+    
+# set_debug_screenshot('./imgs/hora_2.jpg')
 # wait_new_kyoku()
 # res = get_active_player()
 # print(res)
 
 # rec_kyoku_info()
 # cv2.waitKey(0)
-# get_dora(screenshot, 3)
+# get_dora_marker(get_screenshot(), 0)
 # get_scores(screenshot)
 # res = rec_kyoku_info(screenshot)
 # get_honba(screenshot)

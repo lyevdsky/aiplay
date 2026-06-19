@@ -14,7 +14,7 @@ if sys.platform == "win32":
     region = (0, 0, 2560, 1440)
     camera.start(target_fps=60)
 
-SHOW_SCREENSHOW = False
+SHOW_SCREENSHOW = True
 img_q = deque(maxlen=10)
 _debug_screenshot = None
 
@@ -25,7 +25,7 @@ duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps   # 视频总时长（秒）
 
 def video_capture():
     video_start_ms = 0
-    video_start_ms = 180000
+    video_start_ms = 375000
     if not hasattr(video_capture, '_count'):
         video_capture._count = 0
         video_capture._start_time = time.time()
@@ -50,10 +50,10 @@ def set_debug_screenshot(path):
 
 def get_screenshot(region = None):
     if _debug_screenshot is not None:
-        return _debug_screenshot
-
-    # shot = video_capture()
-    shot = camera.get_latest_frame()
+        shot = _debug_screenshot
+    else:
+        shot = video_capture()
+        # shot = camera.get_latest_frame()
     
     img_q.append(shot)
 

@@ -1,4 +1,5 @@
 import asyncio
+import os
 import threading
 import time
 import traceback
@@ -80,7 +81,7 @@ def run_one_game():
         print('run one game')
         game.main()
     except Exception as e:
-        # TODO send_message({ type: 'error' })
+        send_message({ type: 'error' })
         try:
             save_img_q()
         except Exception as save_err:
@@ -101,17 +102,25 @@ time.sleep(3)
 
 # 主线程跑 supervisor：等 API 发来启动信号 -> 跑一局 -> 回到空闲
 print("[SERVER] 就绪，等待 POST /game/start 启动游戏")
-while True:
-    start_event.wait()      # 阻塞直到 API 触发
-    start_event.clear()
-    _set_status("running")
+try:
+    while True:
+        # 带超时轮询，否则主线程会卡在 C 级锁里，Ctrl+C 无法生效
+        if not start_event.wait(timeout=0.5):
+            continue
+        start_event.clear()
+        _set_status("running")
 
-    err = run_one_game()
+        err = run_one_game()
 
-    if err is None:
-        _set_status("idle")
-        print("[SERVER] 本局结束，回到空闲，可再次启动")
-    else:
-        _set_status("error", err)
-        print("[SERVER] 本局异常结束，回到空闲，可再次启动")
+        if err is None:
+            _set_status("idle")
+            print("[SERVER] 本局结束，回到空闲，可再次启动")
+        else:
+            _set_status("error", err)
+            print("[SERVER] 本局异常结束，回到空闲，可再次启动")
+except KeyboardInterrupt:
+    print("[SERVER] 收到 Ctrl+C，退出进程")
+    # 存在 uvicorn / pynput 等非主线程，强制退出确保进程真正结束
+    os._exit(0)
+
 

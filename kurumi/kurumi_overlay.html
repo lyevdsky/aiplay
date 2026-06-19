@@ -308,6 +308,10 @@
                     if (hand.length === 0) return
                     console.log(data.data)
                     renderRank(data.data)
+                } else if (data.type === 'error') {
+                    setStatus('ready')
+                    hand = []
+                    renderRank()
                 }
             }
             ws.onclose = () => {
