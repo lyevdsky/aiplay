@@ -25,7 +25,7 @@ duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps   # 视频总时长（秒）
 
 def video_capture():
     video_start_ms = 0
-    # video_start_ms = 375000
+    video_start_ms = 24000
     if not hasattr(video_capture, '_count'):
         video_capture._count = 0
         video_capture._start_time = time.time()
@@ -42,6 +42,9 @@ def video_capture():
     if ret:
         return frame
     return False
+
+# img = video_capture()
+# cv2.imwrite('dora1_error.png', img)
 
 def set_debug_screenshot(path):
     global _debug_screenshot

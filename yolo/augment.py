@@ -1,24 +1,19 @@
 from pathlib import Path
 from PIL import Image
-import shutil
 import random
 import numpy as np
 import cv2
-# TODO none
+import shutil
+
 TRAIN_DIR = Path("dataset/train")
 
-def augment_tile(src_path, out_dir, count=80):
-    img = Image.open(src_path).convert("RGB")
-    img = img.resize((126, 156), Image.LANCZOS)
-    out_dir = Path(out_dir)
-    out_dir.mkdir(parents=True, exist_ok=True)
 
-    # 保存原图
-    img.save(out_dir / "aug_000.png")
-
-    for i in range(1, count):
+def augment_one_image(img, count_per_image):
+    """对单张图做增强，返回增强后的图片列表"""
+    h, w = np.array(img).shape[:2]
+    results = []
+    for _ in range(count_per_image):
         arr = np.array(img.copy())
-        h, w = arr.shape[:2]
 
         # ── 1. 横向 + 纵向压缩 ──────────────────────────
         scale_x = random.uniform(0.30, 1.0)
@@ -53,25 +48,44 @@ def augment_tile(src_path, out_dir, count=80):
         factor = random.uniform(0.65, 1.15)
         arr = np.clip(arr.astype(float) * factor, 0, 255).astype(np.uint8)
 
-        # ── 5. 直接保存压缩后的真实尺寸 ──────────────────
-        aug = Image.fromarray(arr)
-        aug.save(out_dir / f"aug_{i:03d}.png")
+        results.append(Image.fromarray(arr))
+    return results
 
 
-# 遍历所有类别
-src_root = Path("dataset/train")
-for class_dir in src_root.iterdir():
-    if not class_dir.is_dir():
-        continue
-    images = list(class_dir.glob("original.png"))
-    if not images:
-        continue
-    print(f"增强类别: {class_dir.name}")
-    augment_tile(images[0], class_dir, count=80)
+def augment_class_dir(class_dir, total_count=80):
+    """处理单个类别文件夹：可能有1张original.png，也可能有多张真实素材"""
+    images = list(class_dir.glob("*.png")) + list(class_dir.glob("*.jpg"))
+    # 过滤掉之前生成的增强图，只保留原始素材
+    source_images = [p for p in images if not p.stem.startswith("aug_")]
 
-print("增强完成！")
+    if not source_images:
+        return
 
-# 复制 hard_examples 到 dataset/train
+    # 清理旧的增强图，避免重复累积
+    for p in images:
+        if p.stem.startswith("aug_"):
+            p.unlink()
+
+    n_sources = len(source_images)
+    count_per_image = max(total_count // n_sources, 1)
+
+    idx = 0
+    for src_path in source_images:
+        img = Image.open(src_path).convert("RGB")
+        img = img.resize((126, 156), Image.LANCZOS)
+
+        # 保存原图（resize后）
+        img.save(class_dir / f"aug_{idx:03d}.png")
+        idx += 1
+
+        for aug_img in augment_one_image(img, count_per_image - 1):
+            aug_img.save(class_dir / f"aug_{idx:03d}.png")
+            idx += 1
+
+    print(f"  {class_dir.name}: {n_sources}张原图 -> {idx}张增强图")
+
+
+# ── 1. 先把 hard_examples 复制进 dataset/train ──────────────
 hard_root = Path("./hard_examples")
 if hard_root.exists():
     for class_dir in hard_root.iterdir():
@@ -85,4 +99,13 @@ if hard_root.exists():
         for img_path in images:
             dst = out_dir / f"hard_{img_path.name}"
             shutil.copy(img_path, dst)
-            print(f"复制困难样本: {img_path} -> {dst}")
+        print(f"复制困难样本: {class_dir.name} ({len(images)}张)")
+
+# ── 2. 对每个类别做增强 ──────────────────────────────────────
+print("\n开始增强...")
+for class_dir in sorted(TRAIN_DIR.iterdir()):
+    if not class_dir.is_dir():
+        continue
+    augment_class_dir(class_dir, total_count=80)
+
+print("\n增强完成！")

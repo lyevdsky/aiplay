@@ -1,9 +1,31 @@
+import os
 import cv2
+import numpy as np
 from config import TILE_WHILE_HSV, WHILE_HSV, IS_DEV
 from util import find_contour
 from ultralytics import YOLO
 
 MOCK = False
+
+# 上一张误检测保存的图片，用于去重避免重复保存
+_last_error_img = None
+
+def save_error_img(img, prefix='z5'):
+    global _last_error_img
+    # 与上一张误检测图片比对，尺寸一致且像素完全相同则跳过
+    if (_last_error_img is not None
+            and _last_error_img.shape == img.shape
+            and np.array_equal(_last_error_img, img)):
+        return
+    _last_error_img = img.copy()
+
+    save_dir = './logs/error'
+    os.makedirs(save_dir, exist_ok=True)
+    import time
+    path = os.path.join(save_dir, f'{prefix}_{int(time.time() * 1000)}.png')
+    cv2.imwrite(path, img)
+    return path
+    
 if IS_DEV:
     model = None
 else:
@@ -51,6 +73,7 @@ def predict_tile(img, threshold = 0.8, debug=False):
             ratio = cv2.countNonZero(mask) / (w * h)
             if ratio < 0.8:
                 print('误检测为z5', ratio)
+                save_error_img(img, prefix='z5')
                 return None
         return name[::-1]
     

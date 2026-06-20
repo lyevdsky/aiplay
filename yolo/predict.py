@@ -13,6 +13,9 @@ def predict_tile(img):
     top1 = result.probs.top1
     name = result.names[top1]
     conf = result.probs.top1conf.item()
+
+    if name == "none":
+        return None, conf  # 识别为干扰物，过滤掉
     return name, conf
 
 # 测试

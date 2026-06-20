@@ -8,6 +8,7 @@ from config import HORA_HSV, RYUKYOKU_HSV, HORA_REGION, RYUKYOKU_REGION, POLLING
 ron_template = cv2.imread('./ref/kyoku/hora.png')
 tsumo_template = cv2.imread('./ref/kyoku/tsumo.png')
 ryukyoku_template = cv2.imread('./ref/kyoku/ryukyoku.png')
+dora5_template = None
 _prev_is_hora = False
 def is_hora():
     global _prev_is_hora
@@ -28,12 +29,19 @@ def is_ryukyoku():
     return bool
 
 def is_interrupt():
+    global dora5_template
     x,y,w,h = DORA_FIRST_REGION
-    doraimg = get_screenshot(DORA_FIRST_REGION)
+    if dora5_template is None:
+        dora5_template = get_screenshot((x + w * 4 + 5, y + 5,w - 10,h - 10))
+    shot = get_screenshot()
+    doraimg = shot[y:y+h,x:x+w]
     cs = find_contour(doraimg, WHILE_HSV, min_area= w * h * 0.9, debug=False)
-    # 避免同牌提示导致的误判，需要关闭同牌提示
-    # TODO 将宝牌index 5的保存下来做为template 匹配。避免同牌提示的误判
-    return len(cs) == 0
+    # 避免同牌提示导致的误判，可能需要关闭同牌提示
+    if len(cs) != 0:
+        return False
+
+    bool = has_template(shot[y:y+h, x+w*4:x+w*5], dora5_template, debug=False)
+    return not bool
 
 def check_interrupt():
     # print('check_interrupt')
@@ -55,10 +63,9 @@ def check_interrupt():
             return 'ryukyoku'
         time.sleep(5)
 
-# set_debug_screenshot('./imgs/0009_is_interrupt_L31.jpg')
-set_debug_screenshot('./video/hora.png')
+# set_debug_screenshot('./imgs/error/dora1_error.png')
 
-res = is_interrupt()
+# res = is_interrupt()
 # print(res)
 # bool = is_hora()
 # print(bool)
