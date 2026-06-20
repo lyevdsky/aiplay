@@ -35,14 +35,14 @@ def augment_one_image(img, count_per_image):
         M = cv2.getPerspectiveTransform(src_pts, dst_pts)
         arr = cv2.warpPerspective(arr, M, (new_w, new_h),
                                   borderMode=cv2.BORDER_CONSTANT,
-                                  borderValue=(255, 255, 255))
+                                  borderValue=(215, 215, 215))
 
         # ── 3. 轻微旋转 ±5° ─────────────────────────────
         angle = random.uniform(-5, 5)
         M_rot = cv2.getRotationMatrix2D((new_w / 2, new_h / 2), angle, 1.0)
         arr = cv2.warpAffine(arr, M_rot, (new_w, new_h),
                              borderMode=cv2.BORDER_CONSTANT,
-                             borderValue=(255, 255, 255))
+                             borderValue=(215, 215, 215))
 
         # ── 4. 亮度扰动 ──────────────────────────────────
         factor = random.uniform(0.65, 1.15)

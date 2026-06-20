@@ -14,7 +14,7 @@ if sys.platform == "win32":
     region = (0, 0, 2560, 1440)
     camera.start(target_fps=60)
 
-SHOW_SCREENSHOW = True
+SHOW_SCREENSHOW = False
 img_q = deque(maxlen=10)
 _debug_screenshot = None
 
@@ -22,7 +22,8 @@ cap = cv2.VideoCapture("./video/kyo.mp4")
 # cap = cv2.VideoCapture("./video/meld_self_kakan.mp4")
 fps = cap.get(cv2.CAP_PROP_FPS)
 duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps   # 视频总时长（秒）
-
+# TODO 立直 跳过 overlay 位置
+# {'type': 'dahai', 'actor': 2, 'pai': '2m', 'tsumogiri': False, 'meta': {'q_values': [0.97319365, 0.30731368, -6.671384, -5.8309374, -6.306546, -5.960788, -6.158166, -5.870702, -5.961959, -6.037217, -6.556838, -6.2457476, 0.7458465], 'mask_bits': 189007972454, 'is_greedy': True, 'batch_size': 1, 'eval_time_ns': 41266400, 'shanten': 1, 'at_furiten': False}, 'values': [{'label': '2m', 'q_value': 0.97319365}, {'label': 'riichi', 'q_value': 0.7458465}, {'label': '3m', 'q_value': 0.30731368}, {'label': '7m', 'q_value': -5.8309374}, {'label': '5s', 'q_value': -5.870702}, {'label': '6p', 'q_value': -5.960788}, {'label': '6s', 'q_value': -5.961959}, {'label': '7s', 'q_value': -6.037217}, {'label': '7p', 'q_value': -6.158166}, {'label': '0p', 'q_value': -6.2457476}, {'label': '3p', 'q_value': -6.306546}, {'label': '0m', 'q_value': -6.556838}, {'label': '6m', 'q_value': -6.671384}]} 
 def video_capture():
     video_start_ms = 0
     video_start_ms = 24000
@@ -55,10 +56,11 @@ def get_screenshot(region = None):
     if _debug_screenshot is not None:
         shot = _debug_screenshot
     else:
-        shot = video_capture()
-        # shot = camera.get_latest_frame()
+        # shot = video_capture()
+        shot = camera.get_latest_frame()
     
     frame = sys._getframe(1)
+    # TODO 不能仅保存最近10张，还应该保存关键方法调用
     caller_info = f"{frame.f_code.co_name}_L{frame.f_lineno}"
     img_q.append((shot, caller_info))
 
