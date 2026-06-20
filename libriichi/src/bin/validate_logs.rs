@@ -208,7 +208,7 @@ fn process_path(path: &Path) -> Result<()> {
                 }
 
                 // This is a rough test
-                // TODO: fix bug for double chankan ron
+                // tod0: fix bug for double chankan ron
                 let ura = ura_markers
                     .as_ref()
                     .context("missing field `ura_markers`")?;

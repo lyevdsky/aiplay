@@ -14,11 +14,11 @@ if sys.platform == "win32":
     region = (0, 0, 2560, 1440)
     camera.start(target_fps=60)
 
-SHOW_SCREENSHOW = False
+SHOW_SCREENSHOW = True
 img_q = deque(maxlen=10)
 _debug_screenshot = None
 
-cap = cv2.VideoCapture("./video/kyo.mp4")
+cap = cv2.VideoCapture("./video/full.mp4")
 # cap = cv2.VideoCapture("./video/meld_self_kakan.mp4")
 fps = cap.get(cv2.CAP_PROP_FPS)
 duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps   # 视频总时长（秒）
@@ -52,10 +52,12 @@ def get_screenshot(region = None):
     if _debug_screenshot is not None:
         shot = _debug_screenshot
     else:
-        # shot = video_capture()
-        shot = camera.get_latest_frame()
+        shot = video_capture()
+        # shot = camera.get_latest_frame()
     
-    img_q.append(shot) # TODO 增加caller 的name + line num
+    frame = sys._getframe(1)
+    caller_info = f"{frame.f_code.co_name}_L{frame.f_lineno}"
+    img_q.append((shot, caller_info))
 
     if region is not None:
         x,y,w,h = region
@@ -85,9 +87,9 @@ def save_img_q(path = None):
     # 2. 遍历队列，保存图片
     idx = 0
     while img_q:
-        img = img_q.popleft()   # 从左侧弹出，先进先出
-        # 生成文件名，例如 0001.jpg
-        filename = os.path.join(folder_name, f"{idx:04d}.jpg")
+        img, caller_info = img_q.popleft()   # 从左侧弹出，先进先出
+        # 生成文件名，例如 0001_funcname_L42.jpg
+        filename = os.path.join(folder_name, f"{idx:04d}_{caller_info}.jpg")
         cv2.imwrite(filename, img)
         idx += 1
 

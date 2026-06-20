@@ -30,7 +30,7 @@ class Phase(Enum):
 
 # TODO
 # ai print less !
-# new kyoku gameloop !!!!!!!!!!! TODO 偶尔出现无法ctrl +c退出问题
+# new kyoku gameloop !!!!!!!!!!! 
 # 听牌提示 认为打牌问题 o
 # 打牌太快问题。 !
 # 杠 哪个问题
@@ -68,21 +68,17 @@ class Game:
         init_gamestate()
         state = self.state
         kyoku_info = rec_kyoku_info()
-        if kyoku_info['bakaze'] == 'E':
-            kyoku = kyoku_info['kyokunum']
-        elif kyoku_info['bakaze'] == 'S':
-            kyoku = kyoku_info['kyokunum'] + 4
-        elif kyoku_info['bakaze'] == 'W':
-            kyoku = kyoku_info['kyokunum'] + 8
-        state['kyoku'] = kyoku
+        state['bakaze'] = kyoku_info['bakaze']
+        state['kyoku'] = kyoku_info['kyoku']
         state['honba'] = kyoku_info['honba']
         state['kyotaku'] = kyoku_info['kyotaku']
         state['dora_markers'] = [kyoku_info['dora_marker']]
 
         players = ['self', 'next', 'across', 'prev']
-        oya_id = kyoku_info['kyokunum'] - 1
+        oya_id = kyoku_info['kyoku'] - 1
         oya_index = players.index(kyoku_info['oya'])
-
+        
+        state['oya'] = oya_id
         state['current_player'] = oya_id
 
         player_to_id = {

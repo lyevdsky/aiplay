@@ -833,7 +833,7 @@ impl PlayerState {
 
         // it considered case like 1111234 where you cannot chi 14
         if literal_num <= 7 && self.tehai[tile_id + 1] > 0 && self.tehai[tile_id + 2] > 0 {
-            // TODO: check the conditions only when self.shanten == 0?
+            // TOD0: check the conditions only when self.shanten == 0?
             let mut tehai_after = self.tehai;
             tehai_after[tile_id] = 0;
             tehai_after[tile_id + 1] -= 1;

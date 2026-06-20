@@ -117,9 +117,15 @@
                 position: absolute;
                 left: 50%;
             }
-            /* 未命中名次的操作默认隐藏，命中 top3 才显示（rank 着色见下方） */
+            /* 未命中名次的操作默认隐藏（塌缩不占位） */
             .action:not(.rank0):not(.rank1):not(.rank2) {
                 display: none;
+            }
+            /* 当本回合有 action 类操作时，未命中的「跳过」框占位但不可见，
+               作为其他操作的定位基准；其他未命中操作仍塌缩 */
+            .actions.has-action .action[data-label="none"]:not(.rank0):not(.rank1):not(.rank2) {
+                display: flex;
+                visibility: hidden;
             }
             .hand {
                 position: absolute;
@@ -229,8 +235,7 @@
     </head>
     <body>
         <!-- <div class="bg"></div> -->
-         <!-- TODO 立直 跳过 -->
-          <!-- error 后没有清楚render -->
+         <!-- TODO 立直 跳过 自摸会有跳过框吗？ -->
         <div class="actions" id="actions">
             <div class="action" data-label="none" data-name="跳过"><span class="action-text">跳过</span></div>
             <div class="action" data-label="hora" data-name="和"><span class="action-text">和</span></div>
@@ -320,7 +325,11 @@
                 setTimeout(connect, 1000)
             }
             // onerror 后浏览器会接着触发 onclose，由 onclose 统一重连
-            ws.onerror = () => ws.close()
+            ws.onerror = () => {
+                hand = []
+                renderRank()
+                ws.close()
+            }
         }
         connect()
         const handDom = document.getElementById('hand')
@@ -406,7 +415,17 @@
                 el.className = 'action'
                 setText(el, el.dataset.name)
             })
-            if (values.length === 0) return
+            if (values.length === 0) {
+                actionsDom.classList.remove('has-action')
+                return
+            }
+
+            // 本回合是否存在 action 类操作（chi_* 归为 chi）：决定「跳过」框是否占位
+            const actionLabels = new Set(actionItems.map((el) => el.dataset.label))
+            const hasAction = values.some((v) =>
+                actionLabels.has(v.label.startsWith('chi') ? 'chi' : v.label),
+            )
+            actionsDom.classList.toggle('has-action', hasAction)
 
             // softmax: 把 q_value 转成百分制 score（和为 100）
             const qs = values.map((v) => v.q_value)

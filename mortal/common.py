@@ -64,7 +64,7 @@ def recv_msg(conn: socket.socket, map_location=torch.device('cpu')):
     rx = recv_binary(conn, 8)
     (size,) = struct.unpack('<Q', rx)
     rx = recv_binary(conn, size)
-    return torch.load(BytesIO(rx), weights_only=False, map_location=map_location) # TODO: weights_only=True
+    return torch.load(BytesIO(rx), weights_only=False, map_location=map_location) # TOD0: weights_only=True
 
 def recv_binary(conn: socket.socket, size):
     assert size > 0

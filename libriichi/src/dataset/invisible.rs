@@ -146,7 +146,7 @@ impl Invisible {
         ret
     }
 
-    // TODO: merge this this arena::board::BoardState::encode_oracle_obs; they
+    // TOD0: merge this this arena::board::BoardState::encode_oracle_obs; they
     // should be identical.
     pub fn encode(
         &self,

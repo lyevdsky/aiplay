@@ -107,9 +107,10 @@ def rec_kyoku_info():
     kyoku_info['oya'] = get_oya(screenshot)
     kyoku_info['honba'] = get_honba(screenshot)
     kyoku_info['kyotaku'] = get_kyotaku(screenshot)
-    kyoku_info['bakaze'], kyoku_info['kyokunum'] = get_kyoku(screenshot)
+    kyoku_info['bakaze'], kyoku_info['kyoku'] = get_kyoku(screenshot)
     kyoku_info['dora_marker'] = get_dora_marker(screenshot, index=0)
     kyoku_info['scores'] = get_scores(screenshot)
+
     print('kyoku info: ', kyoku_info)
     return kyoku_info
 
@@ -171,7 +172,8 @@ def wait_new_kyoku():
     except:
         return False
     
-# set_debug_screenshot('./imgs/hora_2.jpg')
+# set_debug_screenshot('./imgs/error/0000.jpg')
+# set_debug_screenshot('./imgs/meld03.png')
 # wait_new_kyoku()
 # res = get_active_player()
 # print(res)

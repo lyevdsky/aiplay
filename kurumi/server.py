@@ -1,3 +1,4 @@
+import logger_setup
 import asyncio
 import os
 import threading
