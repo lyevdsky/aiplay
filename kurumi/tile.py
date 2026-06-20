@@ -42,7 +42,16 @@ def predict_tile(img, threshold = 0.8, debug=False):
         if conf > 0.7 and conf < 0.8:
             cv2.imwrite('./logs/error/1.png', img)
 
+
+
     if conf > threshold:
+        if name == 'z5':
+            hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+            mask = cv2.inRange(hsv, TILE_WHILE_HSV[0], TILE_WHILE_HSV[1])
+            ratio = cv2.countNonZero(mask) / (w * h)
+            if ratio < 0.8:
+                print('误检测为z5', ratio)
+                return None
         return name[::-1]
     
     return None

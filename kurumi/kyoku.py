@@ -166,6 +166,7 @@ def wait_new_kyoku():
     try:
         polling(check_new_kyoku, POLLING_INTERVAL, timeout = 300)
         # 等待手牌准备就绪
+        # save_img_q()
         polling(rec_hand, POLLING_INTERVAL, timeout = None)
         time.sleep(0.5)
         return True

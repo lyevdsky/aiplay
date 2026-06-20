@@ -4,7 +4,7 @@ import shutil
 import random
 import numpy as np
 import cv2
-
+# TODO none
 TRAIN_DIR = Path("dataset/train")
 
 def augment_tile(src_path, out_dir, count=80):

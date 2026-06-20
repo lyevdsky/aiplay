@@ -42,6 +42,6 @@ def rec_tsumo():
 
 check_tsumo = stable_func(rec_tsumo)
 
-# set_debug_screenshot('./logs/20260619_224947/0008.jpg')
+# set_debug_screenshot('./logs/20260620_143100/0008_rec_hand_L13.jpg')
 # res = rec_hand()
 # print(res)

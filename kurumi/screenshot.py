@@ -18,7 +18,7 @@ SHOW_SCREENSHOW = True
 img_q = deque(maxlen=10)
 _debug_screenshot = None
 
-cap = cv2.VideoCapture("./video/full.mp4")
+cap = cv2.VideoCapture("./video/kyo.mp4")
 # cap = cv2.VideoCapture("./video/meld_self_kakan.mp4")
 fps = cap.get(cv2.CAP_PROP_FPS)
 duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps   # 视频总时长（秒）
@@ -89,7 +89,7 @@ def save_img_q(path = None):
     while img_q:
         img, caller_info = img_q.popleft()   # 从左侧弹出，先进先出
         # 生成文件名，例如 0001_funcname_L42.jpg
-        filename = os.path.join(folder_name, f"{idx:04d}_{caller_info}.jpg")
+        filename = os.path.join(folder_name, f"{idx:04d}_{caller_info}.png")
         cv2.imwrite(filename, img)
         idx += 1
 
