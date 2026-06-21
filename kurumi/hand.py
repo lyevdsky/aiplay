@@ -10,7 +10,7 @@ from config import *
 from tile import check_tile
 
 def rec_hand():
-    img = get_screenshot()
+    img = get_screenshot(save=1)
     x,y,w,h = HAND_FIRST_REGION
     tiles = []
     imgs = []
@@ -32,7 +32,7 @@ def rec_tsumo():
 
     meld_len = len(gamestate['player_info'][id]["melds"])
     x = x + w * 13 - meld_len * 3 * w + DRAWN_GAP
-    drawn = get_screenshot((x, y - 90, w, h + 90)) # 这里增加识别区的高度，是因为有可能鼠标hover时，牌上浮导致识别不到。
+    drawn = get_screenshot((x, y - 90, w, h + 90), save=5) # 这里增加识别区的高度，是因为有可能鼠标hover时，牌上浮导致识别不到。
     # cv2.imshow('drawn', drawn)
     # cv2.waitKey(0)
     # cv2.destroyWindow('drawn')

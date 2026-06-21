@@ -106,7 +106,7 @@ def get_current_player_info():
 
 # 识别是否存在加杠
 def rec_kakan():
-    shot = get_screenshot()
+    shot = get_screenshot(save=5)
     player, melds = get_current_player_info()
     for i, meld in enumerate(melds):
         if meld['type'] == 'pon':
@@ -128,7 +128,7 @@ def rec_new_meld():
     # melds = []
     # player = 'prev'
     x,y,w,h = get_meld_region(player, melds, len(melds))
-    img = get_screenshot((x,y,w,h))
+    img = get_screenshot((x,y,w,h), save=5)
 
     result = check_tiles(img, player, debug=False)
     # print(result)

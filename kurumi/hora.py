@@ -12,7 +12,7 @@ dora5_template = None
 _prev_is_hora = False
 def is_hora():
     global _prev_is_hora
-    screenshot = get_screenshot(HORA_REGION)
+    screenshot = get_screenshot(HORA_REGION, save=5)
     bool = has_template(screenshot, ron_template, hsv = HORA_HSV, debug=False)
     if not bool:
         bool = has_template(screenshot, tsumo_template, hsv = HORA_HSV, debug=False)
@@ -23,7 +23,7 @@ def is_hora():
     return bool
 
 def is_ryukyoku():
-    screenshot = get_screenshot(RYUKYOKU_REGION)
+    screenshot = get_screenshot(RYUKYOKU_REGION, save=5)
     bool = has_template(screenshot, ryukyoku_template, hsv = RYUKYOKU_HSV, debug=False)
     print('check ryukyoku: ', bool)
     return bool
@@ -32,8 +32,8 @@ def is_interrupt():
     global dora5_template
     x,y,w,h = DORA_FIRST_REGION
     if dora5_template is None:
-        dora5_template = get_screenshot((x + w * 4 + 5, y + 5,w - 10,h - 10))
-    shot = get_screenshot()
+        dora5_template = get_screenshot((x + w * 4 + 5, y + 5,w - 10,h - 10), save=1)
+    shot = get_screenshot(save=10)
     doraimg = shot[y:y+h,x:x+w]
     cs = find_contour(doraimg, WHILE_HSV, min_area= w * h * 0.9, debug=False)
     # 避免同牌提示导致的误判，可能需要关闭同牌提示

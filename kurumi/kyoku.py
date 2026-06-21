@@ -102,7 +102,7 @@ def get_scores(screenshot):
     return [res1, res2, res3, res4]
 
 def rec_kyoku_info():
-    screenshot = get_screenshot()
+    screenshot = get_screenshot(save=5)
     kyoku_info = {}
     kyoku_info['oya'] = get_oya(screenshot)
     kyoku_info['honba'] = get_honba(screenshot)
@@ -121,7 +121,7 @@ def get_active_player():
         'across': ACTIVE_ACROSS_REGION,
         'prev': ACTIVE_PREV_REGION
     }
-    shot = get_screenshot()
+    shot = get_screenshot(save=2)
 
     for p, region in regions.items():
         x,y,w,h = region
@@ -156,7 +156,7 @@ check_player_change = stable_func(_check_player_change)
 def wait_new_kyoku():
     print('wait new kyoku')
     def check_new_kyoku():
-        screenshot = get_screenshot()
+        screenshot = get_screenshot(save=2)
         marker = stabled_get_dora_marker(screenshot, 0)
         if marker is not None:
             return True

@@ -15,15 +15,16 @@ if sys.platform == "win32":
     camera.start(target_fps=60)
 
 SHOW_SCREENSHOW = False
-img_q = deque(maxlen=10)
+JPEG_QUALITY = 95
+img_q = deque(maxlen=500)
+saved_snapshots = {}   # {caller_info: [(buf, caller_info), ...]}，同一调用点再次触发会覆盖，save_img_q 时各存为一个子文件夹
 _debug_screenshot = None
 
 cap = cv2.VideoCapture("./video/kyo.mp4")
 # cap = cv2.VideoCapture("./video/meld_self_kakan.mp4")
 fps = cap.get(cv2.CAP_PROP_FPS)
 duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps   # 视频总时长（秒）
-# TODO 立直 跳过 overlay 位置
-# {'type': 'dahai', 'actor': 2, 'pai': '2m', 'tsumogiri': False, 'meta': {'q_values': [0.97319365, 0.30731368, -6.671384, -5.8309374, -6.306546, -5.960788, -6.158166, -5.870702, -5.961959, -6.037217, -6.556838, -6.2457476, 0.7458465], 'mask_bits': 189007972454, 'is_greedy': True, 'batch_size': 1, 'eval_time_ns': 41266400, 'shanten': 1, 'at_furiten': False}, 'values': [{'label': '2m', 'q_value': 0.97319365}, {'label': 'riichi', 'q_value': 0.7458465}, {'label': '3m', 'q_value': 0.30731368}, {'label': '7m', 'q_value': -5.8309374}, {'label': '5s', 'q_value': -5.870702}, {'label': '6p', 'q_value': -5.960788}, {'label': '6s', 'q_value': -5.961959}, {'label': '7s', 'q_value': -6.037217}, {'label': '7p', 'q_value': -6.158166}, {'label': '0p', 'q_value': -6.2457476}, {'label': '3p', 'q_value': -6.306546}, {'label': '0m', 'q_value': -6.556838}, {'label': '6m', 'q_value': -6.671384}]} 
+
 def video_capture():
     video_start_ms = 0
     video_start_ms = 24000
@@ -52,17 +53,51 @@ def set_debug_screenshot(path):
     img = cv2.imread(path)
     _debug_screenshot = img
 
-def get_screenshot(region = None):
+# 复现用：从 logs/xxx 文件夹按文件名顺序逐张读取，每次调用 get_screenshot 返回下一张
+_replay_files = []
+_replay_idx = 0
+
+def set_replay_folder(folder):
+    """指定一个 logs 下保存过的文件夹，之后 get_screenshot 会按顺序逐张返回其中的图片。"""
+    global _replay_files, _replay_idx, _debug_screenshot
+    _replay_files = sorted(
+        os.path.join(folder, f)
+        for f in os.listdir(folder)
+        if f.lower().endswith((".jpg", ".png"))
+    )
+    _replay_idx = 0
+    _debug_screenshot = None
+    print(f"replay: 载入 {len(_replay_files)} 张图片，来自 {folder}")
+
+def _next_replay_shot():
+    """返回下一张复现图片；播放完后停留在最后一张。"""
+    global _replay_idx
+    if not _replay_files:
+        return None
+    idx = min(_replay_idx, len(_replay_files) - 1)
+    _replay_idx += 1
+    return cv2.imread(_replay_files[idx])
+
+def get_screenshot(region = None, save = 0):
     if _debug_screenshot is not None:
         shot = _debug_screenshot
+    elif _replay_files:
+        shot = _next_replay_shot()
     else:
-        # shot = video_capture()
-        shot = camera.get_latest_frame()
-    
+        shot = video_capture()
+        # shot = camera.get_latest_frame()
+
     frame = sys._getframe(1)
-    # TODO 不能仅保存最近10张，还应该保存关键方法调用
     caller_info = f"{frame.f_code.co_name}_L{frame.f_lineno}"
-    img_q.append((shot, caller_info))
+    # 入队时即编码成 JPEG，大幅降低内存占用
+    ok, buf = cv2.imencode(".jpg", shot, [cv2.IMWRITE_JPEG_QUALITY, JPEG_QUALITY])
+    if ok:
+        img_q.append((buf, caller_info))
+
+    if save:
+        # 记录当前 img_q 中最近 save 张的快照，同一调用点会覆盖旧快照
+        recent = list(img_q)[-save:]
+        saved_snapshots[caller_info] = recent
 
     if region is not None:
         x,y,w,h = region
@@ -90,12 +125,24 @@ def save_img_q(path = None):
     os.makedirs(folder_name, exist_ok=True)
 
     # 2. 遍历队列，保存图片
+    items = list(img_q)
+    img_q.clear()
     idx = 0
-    while img_q:
-        img, caller_info = img_q.popleft()   # 从左侧弹出，先进先出
+    for img, caller_info in items:
         # 生成文件名，例如 0001_funcname_L42.jpg
-        filename = os.path.join(folder_name, f"{idx:04d}_{caller_info}.png")
-        cv2.imwrite(filename, img)
+        filename = os.path.join(folder_name, f"{idx:04d}_{caller_info}.jpg")
+        img.tofile(filename)
         idx += 1
 
     print(f"共保存 {idx} 张图片到文件夹 {folder_name}")
+
+    # 3. 保存通过 save 标记的快照，每个快照存到独立子文件夹
+    for snap_idx, (snap_caller, shots) in enumerate(saved_snapshots.items()):
+        sub_folder = os.path.join(folder_name, f"snapshot_{snap_idx:02d}_{snap_caller}")
+        os.makedirs(sub_folder, exist_ok=True)
+        for i, (img, caller_info) in enumerate(shots):
+            filename = os.path.join(sub_folder, f"{i:04d}_{caller_info}.jpg")
+            img.tofile(filename)
+        print(f"快照保存 {len(shots)} 张图片到文件夹 {sub_folder}")
+
+    saved_snapshots.clear()

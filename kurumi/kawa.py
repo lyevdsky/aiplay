@@ -58,7 +58,7 @@ def rec_dahai(player, pos, riichi_index):
     else:
         h = h + 30
 
-    img = get_screenshot((x,y,w,h))
+    img = get_screenshot((x,y,w,h), save=100)
     result = check_tile(img, player, return_dict=True, debug=False)
     # print(result)
     if result is None:

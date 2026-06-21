@@ -235,7 +235,6 @@
     </head>
     <body>
         <!-- <div class="bg"></div> -->
-         <!-- TODO 立直 跳过 自摸会有跳过框吗？ -->
         <div class="actions" id="actions">
             <div class="action" data-label="none" data-name="跳过"><span class="action-text">跳过</span></div>
             <div class="action" data-label="hora" data-name="和"><span class="action-text">和</span></div>
@@ -255,7 +254,7 @@
         let hand = []
         let myId = null
         let lastDahai = '1m'   // 最近一张被打出的牌，用于推算吃用到的手牌
-        const mockData = {
+        let mockData = {
             type: 'dahai',
             actor: 0,
             pai: '1p',
@@ -331,10 +330,10 @@
                 ws.close()
             }
         }
-        connect()
+
+
         const handDom = document.getElementById('hand')
         const actionsDom = document.getElementById('actions')
-        // if (DEBUG) document.documentElement.classList.add('debug')
 
         function sortTiles(tiles) {
             const suitOrder = { m: 100, p: 200, s: 300, z: 400 }
@@ -555,10 +554,16 @@
         }
 
         if (DEBUG) {
+            document.documentElement.classList.add('debug')
+            setStatus('playing')
             hand = ['2m', '4m', '4m', '5p', '8p','4s', '7s', '7s', '9s', '3z', '4z', '4z', '5z', '6s']
             // hand = [ '2m', '3m', '5m', '1p', '2p', '3p', '5p', '3s', '9s', '9s', '1z', '1z', '2z', '2z' ]
             renderHand(hand)
-            renderRank({'type': 'dahai', 'actor': 0, 'pai': 'W', 'tsumogiri': false, 'meta': {'q_values': [-7.5182686, -7.915329, -6.277882, -2.5682902, -7.593501, -8.1602955, -8.589959, -6.221748, 0.061752915, -6.860277, -3.2534614], 'mask_bits': 3852541962, 'is_greedy': true, 'batch_size': 1, 'eval_time_ns': 33686500, 'shanten': 3, 'at_furiten': false}, 'values': [{'label': '3z', 'q_value': 0.061752915}, {'label': '8p', 'q_value': -2.5682902}, {'label': '5z', 'q_value': -3.2534614}, {'label': '9s', 'q_value': -6.221748}, {'label': '5p', 'q_value': -6.277882}, {'label': '4z', 'q_value': -6.860277}, {'label': '2m', 'q_value': -7.5182686}, {'label': '4s', 'q_value': -7.593501}, {'label': '4m', 'q_value': -7.915329}, {'label': '6s', 'q_value': -8.1602955}, {'label': '7s', 'q_value': -8.589959}]} )
+            // renderRank({'type': 'dahai', 'actor': 0, 'pai': 'W', 'tsumogiri': false, 'meta': {'q_values': [-7.5182686, -7.915329, -6.277882, -2.5682902, -7.593501, -8.1602955, -8.589959, -6.221748, 0.061752915, -6.860277, -3.2534614], 'mask_bits': 3852541962, 'is_greedy': true, 'batch_size': 1, 'eval_time_ns': 33686500, 'shanten': 3, 'at_furiten': false}, 'values': [{'label': '3z', 'q_value': 0.061752915}, {'label': '8p', 'q_value': -2.5682902}, {'label': '5z', 'q_value': -3.2534614}, {'label': '9s', 'q_value': -6.221748}, {'label': '5p', 'q_value': -6.277882}, {'label': '4z', 'q_value': -6.860277}, {'label': '2m', 'q_value': -7.5182686}, {'label': '4s', 'q_value': -7.593501}, {'label': '4m', 'q_value': -7.915329}, {'label': '6s', 'q_value': -8.1602955}, {'label': '7s', 'q_value': -8.589959}]} )
+            mockData =  {'type': 'dahai', 'actor': 2, 'pai': '2m', 'tsumogiri': false, 'meta': {'q_values': [0.97319365, 0.30731368, -6.671384, -5.8309374, -6.306546, -5.960788, -6.158166, -5.870702, -5.961959, -6.037217, -6.556838, -6.2457476, 0.7458465], 'mask_bits': 189007972454, 'is_greedy': true, 'batch_size': 1, 'eval_time_ns': 41266400, 'shanten': 1, 'at_furiten': false}, 'values': [{'label': '2m', 'q_value': 0.97319365}, {'label': 'riichi', 'q_value': 0.7458465}, {'label': '3m', 'q_value': 0.30731368}, {'label': '7m', 'q_value': -5.8309374}, {'label': '5s', 'q_value': -5.870702}, {'label': '6p', 'q_value': -5.960788}, {'label': '6s', 'q_value': -5.961959}, {'label': '7s', 'q_value': -6.037217}, {'label': '7p', 'q_value': -6.158166}, {'label': '0p', 'q_value': -6.2457476}, {'label': '3p', 'q_value': -6.306546}, {'label': '0m', 'q_value': -6.556838}, {'label': '6m', 'q_value': -6.671384}]} 
+            renderRank(mockData)
+        } else {
+            connect()
         }
     </script>
 </html>
