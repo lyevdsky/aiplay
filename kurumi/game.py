@@ -65,7 +65,14 @@ class Game:
 
     def start_kyoku(self):
         print("Starting new kyoku...")
+        # init 
         init_gamestate()
+        self.remaining_tsumo = 70
+        self.need_open_dora = 0
+        self.riichi_to_accepted = None
+        self.last_dahai = None
+        self.last_player = None
+
         state = self.state
         kyoku_info = rec_kyoku_info()
         state['bakaze'] = kyoku_info['bakaze']
@@ -307,8 +314,11 @@ class Game:
                     self.open_dora()
 
                 if self.riichi_to_accepted is not None:
+                    print('reach_accept')
                     self.notify({ 'type': 'reach_accepted', 'actor': self.riichi_to_accepted })
                     self.riichi_to_accepted = None
+                    # time sleep 是为了避免立直时放立直棒的手，挡住已打牌，错判鸣牌。
+                    time.sleep(0.5)
 
                 claimed = check_dahai_claimed()
 
@@ -392,7 +402,8 @@ def on_press(key):
 
 listener = keyboard.Listener(on_press=on_press)
 listener.start()
-
+_state_full_5 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_markers': ['1z'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 0, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 0, 'player_info': [{'kawa_index': 7, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 6, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 6, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 7, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['2z', '2z'], 'tile': '2z'}]}], 'my_id': 2}
+_state_full_4 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 2, 'dora_markers': ['1z'], 'scores': [21000, 23000, 34000, 22000], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 2, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 1, 'player_info': [{'kawa_index': 5, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 6, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 5, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 5, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 2}
 _state_full_3 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_markers': ['5s'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 1, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 5, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 5, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 5, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 5, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
 _state_full_2 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_markers': ['5s'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 0, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 2, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 2, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 2, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 2, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
 _state_full_1 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_markers': ['5s'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 3, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 3, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 3, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 3, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 2, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
@@ -402,8 +413,8 @@ _state_full_1 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_mark
 if __name__ == "__main__":
     try:
         game = Game()
-        # game.start_with_state(_state_full_3)
-        # game.phase = Phase.Tsumo
+        # game.start_with_state(_state_full_5)
+        # game.phase = Phase.Dahai
         game.main()
     except Exception as e:
         save_img_q()

@@ -3,8 +3,7 @@ import time
 import cv2
 from collections import deque
 from datetime import datetime
-from pynput import keyboard
-from config import POLLING_INTERVAL
+from config import IS_DEV, POLLING_INTERVAL
 import sys
 
 if sys.platform == "win32":
@@ -77,15 +76,17 @@ def _next_replay_shot():
     idx = min(_replay_idx, len(_replay_files) - 1)
     _replay_idx += 1
     return cv2.imread(_replay_files[idx])
-
+# set_replay_folder('./logs/20260621_143003/snapshot_08_rec_dahai_L61')
+# set_replay_folder('./logs/20260621_162718')
 def get_screenshot(region = None, save = 0):
     if _debug_screenshot is not None:
         shot = _debug_screenshot
     elif _replay_files:
         shot = _next_replay_shot()
-    else:
+    elif IS_DEV:
         shot = video_capture()
-        # shot = camera.get_latest_frame()
+    else:
+        shot = camera.get_latest_frame()
 
     frame = sys._getframe(1)
     caller_info = f"{frame.f_code.co_name}_L{frame.f_lineno}"

@@ -88,6 +88,8 @@ def run_one_game():
         except Exception as save_err:
             print(f"[SERVER] 存图失败: {save_err}")
         err_text = f"{type(e).__name__}: {e}"
+        print("\033[31m [GAME] 游戏中止，打印中止时的GAME STATE \033[0m")
+        print(game.state)
         print(f"[SERVER] 游戏异常，已捕获，进程继续运行：{err_text}")
         traceback.print_exc()
         return err_text

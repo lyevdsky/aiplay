@@ -124,18 +124,15 @@ def check_dahai_claimed():
 
     result = rec_dahai(player_pos, player_info['kawa_index'], player_info['riichi_index'])
     print('check_dahai_claimed: ', result is None)
-    if result is None:
-        print(player_pos, player_info['kawa_index'],  player_info['riichi_index'])
-        print(gamestate)
     return result is None
 
-# set_debug_screenshot('./logs/20260620_222030/0000_rec_new_meld_L131.png')
+set_debug_screenshot('./logs/20260621_162718/0499_rec_new_meld_L131.png')
 # res = rec_dahai('next', 11, 11)
 # print(res)
-# for i in range(10):
+# for i in range(100):
 #     set_debug_screenshot(f'./logs/20260617_165923/000{i}.jpg')
-#     res = rec_dahai('self', 7, None)
-#     print(res)
+    # res = rec_dahai('prev', 6, None)
+    # print(res)
 # print(rec_tsumo())
 # if rec_tsumo() is not None:
 #     res = None

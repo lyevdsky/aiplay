@@ -2,7 +2,7 @@ PREV_MELD_FIRST_REGION = (130,1030,200,280)
 import time
 import cv2
 import numpy as np
-from gamestate import get_gamestate
+from gamestate import get_gamestate, set_gamestate
 from screenshot import get_screenshot, set_debug_screenshot
 from tile import check_tiles
 from util import stable_func
@@ -126,7 +126,7 @@ def rec_new_meld():
     # melds = [{ 'type': 'pon'}, { 'type': 'ankan' }, {'type': 'pon'}]
     # melds = [{ 'type': 'chi'}]
     # melds = []
-    # player = 'prev'
+    # player = 'next'
     x,y,w,h = get_meld_region(player, melds, len(melds))
     img = get_screenshot((x,y,w,h), save=5)
 
@@ -180,7 +180,9 @@ def rec_new_meld():
 #     set_debug_screenshot(f'./logs/20260615_133324/000{i}.jpg')
 #     rec_new_meld()
 
-# set_debug_screenshot('./logs/20260617_154527/0009.jpg')
+# set_debug_screenshot('./logs/20260621_162718/0499_rec_new_meld_L131.jpg')
+# # set_debug_screenshot('./logs/20260617_154527/0009.jpg')
+# set_gamestate({'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_markers': ['1z'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 0, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 0, 'player_info': [{'kawa_index': 8, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 7, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 7, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 8, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['2z', '2z'], 'tile': '2z'}]}], 'my_id': 2})
 # res = rec_new_meld()
 # print(res)
 
@@ -206,4 +208,3 @@ def check_kan():
     if ankan_meld is not None:
         return ankan_meld
     return None
-

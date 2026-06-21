@@ -17,7 +17,7 @@ def is_hora():
     if not bool:
         bool = has_template(screenshot, tsumo_template, hsv = HORA_HSV, debug=False)
     if _prev_is_hora and not bool:
-        save_img_q('is_hora_error')
+        save_img_q('./logs/is_hora_error')
     _prev_is_hora = bool
     print('check hora: ', bool)
     return bool
@@ -53,7 +53,6 @@ def check_interrupt():
         return None
     
     print('check_interrupt: True')
-    save_img_q()
     while True:
         hora = is_hora()
         if hora:
