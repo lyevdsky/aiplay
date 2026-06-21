@@ -148,7 +148,7 @@ def check_tile(img, player = 'self', min_area=1500, threshold=0.8, return_dict =
     return tile
 
 def check_tiles(img, player = 'self', min_area=1500, threshold=0.8, debug=False):
-    cs = find_contour(img, WHILE_HSV, min_area)
+    cs = find_contour(img, WHILE_HSV, min_area, debug=debug)
 
     result = []
     for c in cs:
@@ -160,7 +160,7 @@ def check_tiles(img, player = 'self', min_area=1500, threshold=0.8, debug=False)
             print(f'width: {w}, height: {h}')
             cv2.imshow('check_tile', normalized_img)
             cv2.waitKey(0)
-            cv2.destroyWindow('check_tile')
+            # cv2.destroyWindow('check_tile')
 
         tile = predict_tile(normalized_img, threshold, debug=debug)
 
