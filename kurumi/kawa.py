@@ -126,9 +126,9 @@ def check_dahai_claimed():
     print('check_dahai_claimed: ', result is None)
     return result is None
 
-set_debug_screenshot('./logs/20260621_162718/0499_rec_new_meld_L131.png')
-# res = rec_dahai('next', 11, 11)
-# print(res)
+set_debug_screenshot('./imgs/error/fixed_kyokunum.jpg')
+res = rec_dahai('prev', 5, None)
+print(res)
 # for i in range(100):
 #     set_debug_screenshot(f'./logs/20260617_165923/000{i}.jpg')
     # res = rec_dahai('prev', 6, None)

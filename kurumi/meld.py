@@ -186,11 +186,11 @@ def rec_new_meld():
 #     set_debug_screenshot(f'./logs/20260615_133324/000{i}.jpg')
 #     rec_new_meld()
 
-set_debug_screenshot('./logs/20260621_232201/0498_rec_new_meld_L131.jpg')
-# # # set_debug_screenshot('./logs/20260617_154527/0009.jpg')
-set_gamestate({'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 4, 'dora_markers': ['0m'], 'scores': [21500, 32700, 19500, 26300], 'players': [0, 1, 2, 3], 'position': ['next', 'across', 'prev', 'self'], 'current_player': 1, 'player_to_id': {'self': 3, 'next': 0, 'across': 1, 'prev': 2}, 'oya': 3, 'player_info': [{'kawa_index': 3, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 3, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 2, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 3, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 3})
-res = rec_new_meld()
-print(res)
+# set_debug_screenshot('./logs/20260621_232201/0498_rec_new_meld_L131.jpg')
+# # # # set_debug_screenshot('./logs/20260617_154527/0009.jpg')
+# set_gamestate({'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 4, 'dora_markers': ['0m'], 'scores': [21500, 32700, 19500, 26300], 'players': [0, 1, 2, 3], 'position': ['next', 'across', 'prev', 'self'], 'current_player': 1, 'player_to_id': {'self': 3, 'next': 0, 'across': 1, 'prev': 2}, 'oya': 3, 'player_info': [{'kawa_index': 3, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 3, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 2, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 3, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 3})
+# res = rec_new_meld()
+# print(res)
 
 stabled_rec_new_meld = stable_func(rec_new_meld)
 

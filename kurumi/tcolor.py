@@ -9,17 +9,17 @@ def get_rgb(img, x, y):
     return int(r), int(g), int(b)
 
 # img = cv2.imread("./video/ryukyoku.png")
-img = cv2.imread('./video/maka1.png')
+img = cv2.imread('./imgs/error/fixed_kyokunum.jpg')
 
 
 x, y = 1957, 948
 print(f"({x},{y}) RGB = {get_rgb(img, x, y)}")
 
 hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-mask = cv2.inRange(hsv, (0, 0, 250), (180, 255, 255))
-# mask = cv2.inRange(hsv, (20, 100, 220), (35, 255, 255))
-result = cv2.bitwise_and(img, img, mask=mask)
-cv2.imwrite('ryukyoku.png', result)
+# mask = cv2.inRange(hsv, (0, 0, 250), (180, 255, 255))
+# # mask = cv2.inRange(hsv, (20, 100, 220), (35, 255, 255))
+# result = cv2.bitwise_and(img, img, mask=mask)
+# cv2.imwrite('ryukyoku.png', result)
 
 root = tk.Tk()
 root.title("HSV Tuner")

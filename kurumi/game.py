@@ -348,9 +348,11 @@ class Game:
                 self.phase = Phase.EndKyoku
 
             elif self.phase == Phase.EndKyoku:
+                self.notify({
+                    'type': 'end_kyoku'
+                })
                 init_gamestate()
                 is_new_kyoku = wait_new_kyoku()
-                # TODO self.notify()
                 if is_new_kyoku:
                         self.phase = Phase.StartKyoku
                 else:

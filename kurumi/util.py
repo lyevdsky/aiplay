@@ -40,7 +40,8 @@ def find_contour(img, hsv, min_area = 500, debug = False):
     cs = []
     for cnt in contours:
         area = cv2.contourArea(cnt)
-        if area > min_area:  # 过滤太小的
+        print(area)
+        if area > 1300:  # 过滤太小的
             cs.append(cnt)
 
     if debug:
