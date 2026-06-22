@@ -8,6 +8,7 @@ GREEN_HSV = [(40, 60, 60), (80, 255, 255)]
 BLACK_HSV = [(0, 0, 0), (180, 100, 180)]
 WHILE_HSV = [(0, 0, 230), (180, 20, 255)] # 亮白色，牌面背景色
 TILE_WHILE_HSV = [(0, 0, 160), (180, 20, 255)] # 包括模切的灰白
+SAME_TILE_HIGHLIGHT_HSV = [(100,70, 190), (110, 100,225)] # 同牌提示的蓝
 # GRAY_HSV = []
 
 # center dora region

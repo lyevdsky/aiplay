@@ -1,7 +1,7 @@
 import os
 import cv2
 import numpy as np
-from config import TILE_WHILE_HSV, WHILE_HSV, IS_DEV
+from config import TILE_WHILE_HSV, WHILE_HSV, IS_DEV, SAME_TILE_HIGHLIGHT_HSV
 from util import find_contour
 from ultralytics import YOLO
 
@@ -37,7 +37,22 @@ def get_model():
         # model = YOLO("/Users/weilong/code/mjai/mahjong-game/runs/classify/mahjong/weights/best.pt")
         model = YOLO("./ref/yolo/best.pt")
     return model
-    
+
+# 再次校验5z
+def check_5z(img):
+    h, w = img.shape[:2]
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    mask = cv2.inRange(hsv, TILE_WHILE_HSV[0], TILE_WHILE_HSV[1])
+    ratio = cv2.countNonZero(mask) / (w * h)
+    mask2 = cv2.inRange(hsv, SAME_TILE_HIGHLIGHT_HSV[0], SAME_TILE_HIGHLIGHT_HSV[1])
+    ratio2 = cv2.countNonZero(mask2) / (w * h)
+    if ratio < 0.8 and ratio2 < 0.8:
+        print('误检测为z5', ratio)
+        save_error_img(img, prefix='z5')
+        return False
+
+    return True
+
 def predict_tile(img, threshold = 0.8, debug=False):
     # 检查图片尺寸是否合理
     h, w = img.shape[:2]
@@ -64,17 +79,7 @@ def predict_tile(img, threshold = 0.8, debug=False):
         if conf > 0.7 and conf < 0.8:
             cv2.imwrite('./logs/error/1.png', img)
 
-
-
     if conf > threshold:
-        if name == 'z5':
-            hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-            mask = cv2.inRange(hsv, TILE_WHILE_HSV[0], TILE_WHILE_HSV[1])
-            ratio = cv2.countNonZero(mask) / (w * h)
-            if ratio < 0.8:
-                print('误检测为z5', ratio)
-                save_error_img(img, prefix='z5')
-                return None
         return name[::-1]
     
     return None
@@ -112,14 +117,16 @@ def normalize_direction(tileimg, player):
     
     return tileimg, direction
 
-def check_tile(img, player = 'self', min_area=1500, threshold=0.8, return_dict = False, autocrop = True, debug=False):
+def check_tile(img, player = 'self', min_area=1200, threshold=0.8, return_dict = False, autocrop = True, debug=False):
     if autocrop:
         # 先找亮白，再尝试模切的灰白。避免找的牌面矩形不对，导致normalize_direction判断有误
         cs = find_contour(img, WHILE_HSV, min_area)
         if len(cs) == 0:
             cs = find_contour(img, TILE_WHILE_HSV, min_area)
             if len(cs) == 0:
-                return None
+                cs = find_contour(img, SAME_TILE_HIGHLIGHT_HSV, min_area)
+                if len(cs) == 0:
+                    return None
 
         x,y,w,h = cv2.boundingRect(cs[0])
         tileimg = img[y:y+h,x:x+w]
@@ -137,6 +144,9 @@ def check_tile(img, player = 'self', min_area=1500, threshold=0.8, return_dict =
     if tile is None:
         return None
 
+    if tile == '5z' and not check_5z():
+        return None
+
     if return_dict:
         return {
             'tile': tile,
@@ -147,11 +157,12 @@ def check_tile(img, player = 'self', min_area=1500, threshold=0.8, return_dict =
 
     return tile
 
-def check_tiles(img, player = 'self', min_area=1500, threshold=0.8, debug=False):
+def check_tiles(img, player = 'self', min_area=1200, threshold=0.8, debug=False):
     cs = find_contour(img, WHILE_HSV, min_area, debug=debug)
+    cs2 = find_contour(img, SAME_TILE_HIGHLIGHT_HSV, min_area, debug=debug)
 
     result = []
-    for c in cs:
+    for c in (cs + cs2):
         x,y,w,h = cv2.boundingRect(c)
         tileimg = img[y:y+h,x:x+w]
         normalized_img, direction = normalize_direction(tileimg, player)
@@ -163,6 +174,9 @@ def check_tiles(img, player = 'self', min_area=1500, threshold=0.8, debug=False)
             # cv2.destroyWindow('check_tile')
 
         tile = predict_tile(normalized_img, threshold, debug=debug)
+
+        if tile == '5z' and not check_5z():
+            continue
 
         if tile is not None:
             result.append({
