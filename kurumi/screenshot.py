@@ -77,7 +77,7 @@ def _next_replay_shot():
     _replay_idx += 1
     return cv2.imread(_replay_files[idx])
 # set_replay_folder('./logs/20260621_143003/snapshot_08_rec_dahai_L61')
-# set_replay_folder('./logs/20260621_215649')
+# set_replay_folder('./logs/20260621_162718')
 def get_screenshot(region = None, save = 0):
     if _debug_screenshot is not None:
         shot = _debug_screenshot
