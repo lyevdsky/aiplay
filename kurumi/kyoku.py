@@ -114,14 +114,15 @@ def rec_kyoku_info():
     print('kyoku info: ', kyoku_info)
     return kyoku_info
 
-def get_active_player():
+def get_active_player(shot=None):
     regions = {
         'self': ACTIVE_SELF_REGION,
         'next': ACTIVE_NEXT_REGION,
         'across': ACTIVE_ACROSS_REGION,
         'prev': ACTIVE_PREV_REGION
     }
-    shot = get_screenshot(save=2)
+    if shot is None:
+        shot = get_screenshot(save=2)
 
     for p, region in regions.items():
         x,y,w,h = region

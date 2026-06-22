@@ -12,11 +12,13 @@ from kawa import check_dahai, check_dahai_claimed
 from meld import check_new_meld, check_kan
 from hora import check_interrupt
 from util import polling
-from config import POLLING_INTERVAL
+from config import POLLING_INTERVAL, IS_DEV
 from enum import Enum
 from pynput import keyboard
 from mortal.bot import Bot
 from kurumi.mortal.conv import format_output
+from change_watcher import ChangeWatcher
+import queue
 
 class Phase(Enum):
     StartKyoku = 0
@@ -30,7 +32,6 @@ class Phase(Enum):
 
 # TODO
 # ai print less !
-# new kyoku gameloop !!!!!!!!!!! 
 # 听牌提示 认为打牌问题 o
 # 打牌太快问题。 !
 # 杠 哪个问题
@@ -58,6 +59,10 @@ class Game:
         self.remaining_tsumo = 70
         self.bot = Bot()
         self.listener = listener
+        # 生产模式起后台线程，把慢的 active bar / 中断检测移出识别路径；
+        # dev/replay 保持单线程内联逻辑以保证复现确定性。
+        self.use_watcher = not IS_DEV
+        self.watcher = ChangeWatcher() if self.use_watcher else None
 
     def start_with_state(self, state):
         set_gamestate(state)
@@ -100,6 +105,10 @@ class Game:
         state['player_to_id'] = player_to_id
         state['position'] = position
         state['my_id'] = player_to_id['self']
+
+        # 同步后台线程的手番基准（庄家先手）
+        if self.watcher is not None:
+            self.watcher.reset(oya_id, player_to_id)
 
         id_to_score = {
             player_to_id[player]: score
@@ -236,14 +245,42 @@ class Game:
     def main(self):
         state = self.state
 
+        # watcher 模式下，已从队列预取但本阶段还不该消费的 player_change 暂存于此
+        self._pending_change = None
+
+        if self.watcher is not None:
+            self.watcher.start()
+
+        # 非阻塞地把队列里已到达的中断信号取出；顺手到达的 player_change 暂存。
+        def poll_interrupt():
+            while True:
+                try:
+                    msg = self.watcher.q.get_nowait()
+                except queue.Empty:
+                    return None
+                if msg['type'] in ('hora', 'ryukyoku'):
+                    return msg['type']
+                self._pending_change = msg
+
+        # Claim 阶段消费下一个时序信号：优先用预取暂存的，否则阻塞等队列。
+        def wait_signal():
+            if self._pending_change is not None:
+                msg = self._pending_change
+                self._pending_change = None
+                return msg
+            return self.watcher.q.get()
+
         # check current_player kakan ankan dahai hora
         def check_dahai_phase():
             player = state['current_player']
 
-            interrupt = check_interrupt()
+            if self.watcher is not None:
+                interrupt = poll_interrupt()
+            else:
+                interrupt = check_interrupt()
             if interrupt:
                 return interrupt
-            
+
             meld = check_kan()
             if meld is not None:
                 self.claim(player, meld)
@@ -256,7 +293,7 @@ class Game:
                 return 'dahai'
 
             return None
-        
+
         def check_claim_phase():
             interrupt = check_interrupt()
             if interrupt:
@@ -267,7 +304,7 @@ class Game:
                 print_with_color(f'切换至玩家 {player}')
                 return player
             return None
-        
+
 
         while True:
             player = state['current_player']
@@ -302,13 +339,22 @@ class Game:
                     self.phase = Phase.Tsumo
 
             elif self.phase == Phase.Claim:
-                # player change / hora
-                playerOrInterrupt = polling(check_claim_phase, POLLING_INTERVAL, timeout=30)
-                if playerOrInterrupt == 'hora':
-                    self.phase = Phase.Hora
-                    continue
+                # player change / hora —— watcher 模式下从队列消费时序信号，
+                # active bar 的亮灭转换由后台线程全程盯着，不再受识别快慢拖累。
+                if self.watcher is not None:
+                    msg = wait_signal()
+                    if msg['type'] in ('hora', 'ryukyoku'):
+                        self.phase = Phase.Hora
+                        continue
+                    player = msg['pid']
+                    print_with_color(f'切换至玩家 {player}')
                 else:
-                    player = playerOrInterrupt
+                    playerOrInterrupt = polling(check_claim_phase, POLLING_INTERVAL, timeout=30)
+                    if playerOrInterrupt == 'hora':
+                        self.phase = Phase.Hora
+                        continue
+                    else:
+                        player = playerOrInterrupt
 
                 if self.need_open_dora:
                     self.open_dora()
@@ -407,14 +453,7 @@ def on_press(key):
 
 listener = keyboard.Listener(on_press=on_press)
 listener.start()
-_state_full_5 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_markers': ['1z'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 0, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 0, 'player_info': [{'kawa_index': 7, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 6, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 6, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 7, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['2z', '2z'], 'tile': '2z'}]}], 'my_id': 2}
-_state_full_4 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 2, 'dora_markers': ['1z'], 'scores': [21000, 23000, 34000, 22000], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 2, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 1, 'player_info': [{'kawa_index': 5, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 6, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 5, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 5, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 2}
-_state_full_3 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_markers': ['5s'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 1, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 5, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 5, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 5, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 5, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
-_state_full_2 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_markers': ['5s'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 0, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 2, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 2, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 2, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 2, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
-_state_full_1 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_markers': ['5s'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 3, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 3, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 3, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 3, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 2, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
-# _state3 = {'honba': '', 'kyotaku': '', 'bakaze': 'E', 'kyoku': 4, 'dora_markers': ['1p'], 'scores': ['11300', '21000', '7', '33700'], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 3, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 0, 'player_info': [{'kawa_index': 13, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 12, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 13, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['2p', '2p'], 'tile': '2p'}, {'type': 'ankan'}]}, {'kawa_index': 14, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['0m', '5m'], 'tile': '5m'}, {'type': 'ankan'}, {'type': 'pon', 'consumed': ['8p', '8p'], 'tile': '8p'}]}], 'my_id': 2}
-# _state2 = {'honba': '', 'kyotaku': '', 'bakaze': 'E', 'kyoku': 4, 'dora_markers': ['1p'], 'scores': ['11300', '21000', '7', '33700'], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 0, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 0, 'player_info': [{'kawa_index': 12, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 11, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 12, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['2p', '2p'], 'tile': '2p'}, {'type': 'ankan'}]}, {'kawa_index': 14, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['0m', '5m'], 'tile': '5m'}, {'type': 'ankan'}, {'type': 'pon', 'consumed': ['8p', '8p'], 'tile': '8p'}]}], 'my_id': 2}
-# _state = {'honba': '', 'kyotaku': '', 'bakaze': 'E', 'kyoku': 4, 'dora_markers': ['1p'], 'scores': ['11300', '21000', '7', '33700'], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 2, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 0, 'player_info': [{'kawa_index': 4, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 4, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 3, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['2p', '2p'], 'tile': '2p'}]}, {'kawa_index': 4, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['0m', '5m'], 'tile': '5m'}]}], 'my_id': 2}
+
 if __name__ == "__main__":
     try:
         game = Game()
