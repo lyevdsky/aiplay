@@ -31,12 +31,13 @@ def is_ryukyoku():
     print('check ryukyoku: ', bool)
     return bool
 
-def is_interrupt():
+def is_interrupt(shot=None):
     global dora5_template
     x,y,w,h = DORA_FIRST_REGION
     # if dora5_template is None:
     #     dora5_template = get_screenshot((x + w * 4 + 5, y + 5,w - 10,h - 10), save=1)
-    shot = get_screenshot(save=10)
+    if shot is None:
+        shot = get_screenshot(save=10)
     doraimg = shot[y:y+h,x:x+w]
     cs = find_contour(doraimg, WHILE_HSV, min_area= w * h * 0.9, debug=False)
 

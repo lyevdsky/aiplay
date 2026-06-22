@@ -118,6 +118,18 @@ def get_screenshot(region = None, save = 0):
 
     return shot
 
+def get_raw_frame():
+    """给后台线程用的轻量取帧：直接返回 dxcam 最新帧，
+    不入 img_q、不做 region 裁剪、不记录 caller 快照。
+    dev/replay 模式不应起线程，这里只服务生产模式。"""
+    if _debug_screenshot is not None:
+        return _debug_screenshot
+    if _replay_files:
+        return _next_replay_shot()
+    if IS_DEV:
+        return video_capture()
+    return camera.get_latest_frame()
+
 def save_img_q(path = None):
     if path == None:
         folder_name = './logs/' + datetime.now().strftime("%Y%m%d_%H%M%S")
