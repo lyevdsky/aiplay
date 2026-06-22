@@ -378,10 +378,12 @@ class Game:
         
         if message['type'] == 'start_kyoku':
             self.bot.start(self.state['my_id'])
+            react = self.bot.react(message)
         elif message['type'] == 'end_kyoku':
+            react = self.bot.react(message)
             self.bot.end()
-
-        react = self.bot.react(message)
+        else:
+            react = self.bot.react(message)
         if 'error' in react:
             raise RuntimeError('AI React Error', react['error'])
         

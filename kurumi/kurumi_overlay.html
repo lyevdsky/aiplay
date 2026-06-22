@@ -512,6 +512,7 @@
         // 根据 mjai 事件更新手牌，只处理自己（actor === myId）的操作。
         // start_kyoku 用来锁定 myId：tehais 里只有自己的那手不是全 '?'。
         function applyMjai(msg) {
+            
             if (msg.type === 'start_kyoku') {
                 const tehais = msg.tehais || []
                 myId = tehais.findIndex((t) => t.some((p) => p !== '?'))

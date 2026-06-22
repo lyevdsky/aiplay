@@ -144,7 +144,7 @@ def check_tile(img, player = 'self', min_area=1200, threshold=0.8, return_dict =
     if tile is None:
         return None
 
-    if tile == '5z' and not check_5z():
+    if tile == '5z' and not check_5z(normalized_img):
         return None
 
     if return_dict:
@@ -175,7 +175,7 @@ def check_tiles(img, player = 'self', min_area=1200, threshold=0.8, debug=False)
 
         tile = predict_tile(normalized_img, threshold, debug=debug)
 
-        if tile == '5z' and not check_5z():
+        if tile == '5z' and not check_5z(normalized_img):
             continue
 
         if tile is not None:

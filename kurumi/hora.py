@@ -3,7 +3,7 @@ import time
 from tile import check_tile
 from util import has_template, stable_func, find_contour
 from screenshot import get_screenshot, set_debug_screenshot, save_img_q
-from config import HORA_HSV, RYUKYOKU_HSV, HORA_REGION, RYUKYOKU_REGION, POLLING_INTERVAL, DORA_FIRST_REGION, WHILE_HSV
+from config import HORA_HSV, RYUKYOKU_HSV, HORA_REGION, RYUKYOKU_REGION, POLLING_INTERVAL, DORA_FIRST_REGION, WHILE_HSV, SAME_TILE_HIGHLIGHT_HSV
 
 ron_template = cv2.imread('./ref/kyoku/hora.png')
 tsumo_template = cv2.imread('./ref/kyoku/tsumo.png')
@@ -39,6 +39,9 @@ def is_interrupt():
     shot = get_screenshot(save=10)
     doraimg = shot[y:y+h,x:x+w]
     cs = find_contour(doraimg, WHILE_HSV, min_area= w * h * 0.9, debug=False)
+
+    if len(cs) == 0:
+        cs = find_contour(doraimg, SAME_TILE_HIGHLIGHT_HSV, min_area= w * h * 0.9, debug=False)
     return len(cs) == 0
     # 因为增加了同牌提示的识别，所以可以不需要了 
     # # 避免同牌提示导致的误判，可能需要关闭同牌提示
@@ -67,7 +70,7 @@ def check_interrupt():
             return 'ryukyoku'
         time.sleep(5)
 
-# set_debug_screenshot('./imgs/error/dora1_error.png')
+# set_debug_screenshot('./error/0009_is_interrupt_L39.jpg')
 
 # res = is_interrupt()
 # print(res)
