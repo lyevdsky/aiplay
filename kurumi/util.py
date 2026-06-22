@@ -40,6 +40,7 @@ def find_contour(img, hsv, min_area = 500, debug = False):
     cs = []
     for cnt in contours:
         area = cv2.contourArea(cnt)
+        # TODO 考虑改为算外接矩形面积
         if area > 1300:  # 过滤太小的
             cs.append(cnt)
 
