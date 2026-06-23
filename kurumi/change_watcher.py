@@ -6,7 +6,7 @@ from screenshot import get_raw_frame
 from kyoku import get_active_player
 from hora import is_interrupt, is_hora, is_ryukyoku
 from util import stable_func
-from config import POLLING_INTERVAL
+from config import POLLING_INTERVAL, IS_DEV
 
 
 class ChangeWatcher:
@@ -55,13 +55,19 @@ class ChangeWatcher:
 
     def _loop(self):
         while self._running:
+            # dev/replay：watcher 高频 spin 会让帧游标冲到 main 前面。
+            # 队列尚有未消费信号时暂停取帧（不动游标），等 main 消费完再继续，
+            # 使两个读取者的取帧进度大致同步，更贴近生产时序。
+            if IS_DEV and not self.q.empty():
+                time.sleep(POLLING_INTERVAL)
+                continue
+
             shot = get_raw_frame()
             if shot is None or shot is False:
                 time.sleep(POLLING_INTERVAL)
                 continue
 
-            # 1. 中断优先：荣和/自摸/流局时 bar 不会正常轮转。
-            #    中断即一局终点，推送后线程直接退出，无需等待下次 reset。
+            #  中断即一局终点，推送后线程直接退出，无需等待下次 reset。
             if is_interrupt(shot):
                 interrupt = self._resolve_interrupt()
                 if interrupt is not None:
@@ -69,17 +75,12 @@ class ChangeWatcher:
                     self._running = False
                     return
 
-            # 2. active bar：从亮的状态就连续盯着，转换一完成立刻入队
             active = self._stable_active(shot)
             if active is not None:
-                player_to_id = self._player_to_id
-                current = self._current_player
-                if player_to_id is not None and active in player_to_id:
-                    pid = player_to_id[active]
-                    if pid != current:
-                        # 抢先把记录改掉，避免同一次切换连推多条
-                        self._current_player = pid
-                        self.q.put({'type': 'player_change', 'pid': pid})
+                pid = self._player_to_id[active]
+                if pid != self._current_player:
+                    self._current_player = pid
+                    self.q.put({'type': 'player_change', 'pid': pid})
 
             time.sleep(POLLING_INTERVAL)
 

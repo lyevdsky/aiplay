@@ -1,6 +1,7 @@
 import os
 import time
 import cv2
+import threading
 from collections import deque
 from datetime import datetime
 from config import IS_DEV, POLLING_INTERVAL
@@ -20,6 +21,9 @@ saved_snapshots = {}   # {caller_info: [(buf, caller_info), ...]}，同一调用
 _debug_screenshot = None
 
 cap = cv2.VideoCapture("./video/kyo.mp4")
+# cv2.VideoCapture(底层 ffmpeg)非线程安全：main 与 watcher 并发 set+read
+# 会踩坏解码器状态导致崩溃，故 seek+read 必须整体串行
+_cap_lock = threading.Lock()
 # cap = cv2.VideoCapture("./video/meld_self_kakan.mp4")
 fps = cap.get(cv2.CAP_PROP_FPS)
 duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps   # 视频总时长（秒）
@@ -27,15 +31,17 @@ duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps   # 视频总时长（秒）
 def video_capture(reader='main'):
     video_start_ms = 0
     video_start_ms = 24000
-    # 每个读取者一份独立游标，互不影响（main 低频认牌、watcher 高频盯 bar）
-    if not hasattr(video_capture, '_counts'):
-        video_capture._counts = {}
-    count = video_capture._counts.get(reader, 0)
-    ms = video_start_ms + count * (1000 * POLLING_INTERVAL)
-    video_capture._counts[reader] = count + 1
+    # 每个读取者一份独立游标，互不影响（main 低频认牌、watcher 高频盯 bar）。
+    # cap 非线程安全，游标推进 + seek + read 必须整体串行。
+    with _cap_lock:
+        if not hasattr(video_capture, '_counts'):
+            video_capture._counts = {}
+        count = video_capture._counts.get(reader, 0)
+        ms = video_start_ms + count * (1000 * POLLING_INTERVAL)
+        video_capture._counts[reader] = count + 1
 
-    cap.set(cv2.CAP_PROP_POS_MSEC, ms)   # 跳转到 ms 毫秒
-    ret, frame = cap.read()
+        cap.set(cv2.CAP_PROP_POS_MSEC, ms)   # 跳转到 ms 毫秒
+        ret, frame = cap.read()
     if ret:
         return frame
     return False

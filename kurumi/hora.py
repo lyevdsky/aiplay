@@ -69,7 +69,7 @@ def check_interrupt():
         ryukyoku = is_ryukyoku()
         if ryukyoku:
             return 'ryukyoku'
-        time.sleep(5)
+        time.sleep(0.5)
 
 # set_debug_screenshot('./error/0009_is_interrupt_L39.jpg')
 
