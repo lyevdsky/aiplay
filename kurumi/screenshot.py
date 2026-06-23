@@ -24,19 +24,15 @@ cap = cv2.VideoCapture("./video/kyo.mp4")
 fps = cap.get(cv2.CAP_PROP_FPS)
 duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps   # 视频总时长（秒）
 
-def video_capture():
+def video_capture(reader='main'):
     video_start_ms = 0
     video_start_ms = 24000
-    if not hasattr(video_capture, '_count'):
-        video_capture._count = 0
-        video_capture._start_time = time.time()
-    if True:
-        ms = video_start_ms + video_capture._count * (1000 * POLLING_INTERVAL)
-        video_capture._count += 1
-    else:
-        ratio = 0.8
-        now = time.time()
-        ms = round((now - video_capture._start_time) * 1000 * ratio)
+    # 每个读取者一份独立游标，互不影响（main 低频认牌、watcher 高频盯 bar）
+    if not hasattr(video_capture, '_counts'):
+        video_capture._counts = {}
+    count = video_capture._counts.get(reader, 0)
+    ms = video_start_ms + count * (1000 * POLLING_INTERVAL)
+    video_capture._counts[reader] = count + 1
 
     cap.set(cv2.CAP_PROP_POS_MSEC, ms)   # 跳转到 ms 毫秒
     ret, frame = cap.read()
@@ -52,41 +48,48 @@ def set_debug_screenshot(path):
     img = cv2.imread(path)
     _debug_screenshot = img
 
-# 复现用：从 logs/xxx 文件夹按文件名顺序逐张读取，每次调用 get_screenshot 返回下一张
+# 复现用：从 logs/xxx 文件夹按文件名顺序逐张读取。
+# 每个读取者（main / watcher）各持独立游标，回放生产环境的并行取帧。
 _replay_files = []
-_replay_idx = 0
+_replay_idx = {}
 
 def set_replay_folder(folder):
-    """指定一个 logs 下保存过的文件夹，之后 get_screenshot 会按顺序逐张返回其中的图片。"""
+    """指定一个 logs 下保存过的文件夹，之后取帧会按顺序逐张返回其中的图片。"""
     global _replay_files, _replay_idx, _debug_screenshot
     _replay_files = sorted(
         os.path.join(folder, f)
         for f in os.listdir(folder)
         if f.lower().endswith((".jpg", ".png"))
     )
-    _replay_idx = 0
+    _replay_idx = {}
     _debug_screenshot = None
     print(f"replay: 载入 {len(_replay_files)} 张图片，来自 {folder}")
 
-def _next_replay_shot():
-    """返回下一张复现图片；播放完后停留在最后一张。"""
-    global _replay_idx
+def _next_replay_shot(reader='main'):
+    """返回该读取者的下一张复现图片；播放完后停留在最后一张。"""
     if not _replay_files:
         return None
-    idx = min(_replay_idx, len(_replay_files) - 1)
-    _replay_idx += 1
+    cur = _replay_idx.get(reader, 0)
+    idx = min(cur, len(_replay_files) - 1)
+    _replay_idx[reader] = cur + 1
     return cv2.imread(_replay_files[idx])
+
 # set_replay_folder('./logs/20260621_143003/snapshot_08_rec_dahai_L61')
 # set_replay_folder('./logs/20260621_162718')
-def get_screenshot(region = None, save = 0):
+
+def _read_source(reader='main'):
+    """统一取帧入口：按读取者身份从当前帧源取下一帧。
+    生产 dxcam 非消费，replay/video 各读取者独立游标。"""
     if _debug_screenshot is not None:
-        shot = _debug_screenshot
-    elif _replay_files:
-        shot = _next_replay_shot()
-    elif IS_DEV:
-        shot = video_capture()
-    else:
-        shot = camera.get_latest_frame()
+        return _debug_screenshot
+    if _replay_files:
+        return _next_replay_shot(reader)
+    if IS_DEV:
+        return video_capture(reader)
+    return camera.get_latest_frame()
+
+def get_screenshot(region = None, save = 0):
+    shot = _read_source('main')
 
     frame = sys._getframe(1)
     caller_info = f"{frame.f_code.co_name}_L{frame.f_lineno}"
@@ -102,7 +105,7 @@ def get_screenshot(region = None, save = 0):
 
     if region is not None:
         x,y,w,h = region
-        
+
         if SHOW_SCREENSHOW:
             img = shot.copy()
             cv2.rectangle(img, (x, y), (x + w, y+h), (0,0,255), 1)
@@ -119,16 +122,9 @@ def get_screenshot(region = None, save = 0):
     return shot
 
 def get_raw_frame():
-    """给后台线程用的轻量取帧：直接返回 dxcam 最新帧，
-    不入 img_q、不做 region 裁剪、不记录 caller 快照。
-    dev/replay 模式不应起线程，这里只服务生产模式。"""
-    if _debug_screenshot is not None:
-        return _debug_screenshot
-    if _replay_files:
-        return _next_replay_shot()
-    if IS_DEV:
-        return video_capture()
-    return camera.get_latest_frame()
+    """给后台 watcher 线程用的轻量取帧：不入 img_q、不做 region 裁剪、
+    不记录 caller 快照。replay/video 下持 'watcher' 独立游标，与 main 互不影响。"""
+    return _read_source('watcher')
 
 def save_img_q(path = None):
     if path == None:

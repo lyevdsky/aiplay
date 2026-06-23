@@ -5,14 +5,13 @@ import json
 import time
 
 from screenshot import get_screenshot, save_img_q
-from kyoku import rec_kyoku_info, check_player_change, check_new_dora_marker, wait_new_kyoku
+from kyoku import rec_kyoku_info, check_new_dora_marker, wait_new_kyoku
 from gamestate import get_gamestate, init_gamestate, set_gamestate
 from hand import rec_hand, check_tsumo, rec_tsumo
 from kawa import check_dahai, check_dahai_claimed
 from meld import check_new_meld, check_kan
-from hora import check_interrupt
 from util import polling
-from config import POLLING_INTERVAL, IS_DEV
+from config import POLLING_INTERVAL
 from enum import Enum
 from pynput import keyboard
 from mortal.bot import Bot
@@ -59,10 +58,9 @@ class Game:
         self.remaining_tsumo = 70
         self.bot = Bot()
         self.listener = listener
-        # 生产模式起后台线程，把慢的 active bar / 中断检测移出识别路径；
-        # dev/replay 保持单线程内联逻辑以保证复现确定性。
-        self.use_watcher = not IS_DEV
-        self.watcher = ChangeWatcher() if self.use_watcher else None
+        # watcher 永远起：dev/replay 下两个读取者各持独立游标读同一帧源，
+        # 复刻生产环境的并行取帧，main 流程不区分 dev/生产。
+        self.watcher = ChangeWatcher()
 
     def start_with_state(self, state):
         set_gamestate(state)
@@ -107,9 +105,8 @@ class Game:
         state['my_id'] = player_to_id['self']
 
         # 每局一条监视线程：设手番基准后拉起，终局中断时线程自退
-        if self.watcher is not None:
-            self.watcher.reset(oya_id, player_to_id)
-            self.watcher.start()
+        self.watcher.reset(oya_id, player_to_id)
+        self.watcher.start()
 
         id_to_score = {
             player_to_id[player]: score
@@ -246,7 +243,7 @@ class Game:
     def main(self):
         state = self.state
 
-        # watcher 模式下，已从队列预取但本阶段还不该消费的 player_change 暂存于此
+        # 已从队列预取但本阶段还不该消费的 player_change 暂存于此
         self._pending_change = None
 
         # 监视线程每局由 start_kyoku 拉起（终局自退），此处不再统一启动
@@ -274,10 +271,8 @@ class Game:
         def check_dahai_phase():
             player = state['current_player']
 
-            if self.watcher is not None:
-                interrupt = poll_interrupt()
-            else:
-                interrupt = check_interrupt()
+            # 中断检测统一由 watcher 线程负责，主流程只从队列瞄一眼
+            interrupt = poll_interrupt()
             if interrupt:
                 return interrupt
 
@@ -292,17 +287,6 @@ class Game:
                 self.dahai(player, tile, tsumogiri, riichi)
                 return 'dahai'
 
-            return None
-
-        def check_claim_phase():
-            interrupt = check_interrupt()
-            if interrupt:
-                return interrupt
-
-            player = check_player_change()
-            if player is not None:
-                print_with_color(f'切换至玩家 {player}')
-                return player
             return None
 
 
@@ -339,22 +323,14 @@ class Game:
                     self.phase = Phase.Tsumo
 
             elif self.phase == Phase.Claim:
-                # player change / hora —— watcher 模式下从队列消费时序信号，
-                # active bar 的亮灭转换由后台线程全程盯着，不再受识别快慢拖累。
-                if self.watcher is not None:
-                    msg = wait_signal()
-                    if msg['type'] in ('hora', 'ryukyoku'):
-                        self.phase = Phase.Hora
-                        continue
-                    player = msg['pid']
-                    print_with_color(f'切换至玩家 {player}')
-                else:
-                    playerOrInterrupt = polling(check_claim_phase, POLLING_INTERVAL, timeout=30)
-                    if playerOrInterrupt == 'hora':
-                        self.phase = Phase.Hora
-                        continue
-                    else:
-                        player = playerOrInterrupt
+                # 从队列消费时序信号：active bar 的亮灭转换由后台线程全程
+                # 盯着、转换即入队，不再受识别快慢拖累。
+                msg = wait_signal()
+                if msg['type'] in ('hora', 'ryukyoku'):
+                    self.phase = Phase.Hora
+                    continue
+                player = msg['pid']
+                print_with_color(f'切换至玩家 {player}')
 
                 if self.need_open_dora:
                     self.open_dora()
