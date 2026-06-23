@@ -1,3 +1,5 @@
+from datetime import datetime
+import os
 import threading
 import queue
 import time
@@ -7,7 +9,9 @@ from kyoku import get_active_player
 from hora import is_interrupt, is_hora, is_ryukyoku
 from util import stable_func
 from config import POLLING_INTERVAL, IS_DEV
+from collections import deque
 
+img_q = deque(maxlen=20)
 
 class ChangeWatcher:
     """后台线程：持续盯 active bar 和中断动画，把时序信号按序推入队列。
@@ -58,22 +62,23 @@ class ChangeWatcher:
 
     def _loop(self):
         while self._running:
-            # dev/replay：watcher 高频 spin 会让帧游标冲到 main 前面。
             # 队列尚有未消费信号时暂停取帧（不动游标），等 main 消费完再继续，
-            # 使两个读取者的取帧进度大致同步，更贴近生产时序。
+            # 使两个读取者的取帧进度大致同步。
             if not self.q.empty():
                 time.sleep(POLLING_INTERVAL)
                 continue
 
             shot = get_raw_frame()
+            img_q.append(shot)
             if shot is None or shot is False:
                 time.sleep(POLLING_INTERVAL)
                 continue
-
+            # TODO 流局九种九牌等，根据左上宝牌来判断对吗？
             #  中断即一局终点，推送后线程直接退出，无需等待下次 reset。
-            if is_interrupt(shot):
-                cv2.imwrite('interrupt.png', shot)
+            if is_interrupt(shot): 
+                print('change_watcher: interrupt')
                 interrupt = self._resolve_interrupt()
+                print('change_watcher: ', interrupt)
                 if interrupt is not None:
                     self.q.put({'type': interrupt})
                     self._running = False
@@ -85,6 +90,7 @@ class ChangeWatcher:
                 if pid != self._current_player:
                     self._current_player = pid
                     self.q.put({'type': 'player_change', 'pid': pid})
+                    print('change_watcher: player change to ', pid)
 
             time.sleep(POLLING_INTERVAL)
 
@@ -92,10 +98,27 @@ class ChangeWatcher:
         """区分 hora / ryukyoku。这里允许短暂等待动画定型，
         但不阻塞主流程（主流程消费的是队列）。"""
         while self._running:
+            # TODO 卡在这里ctrl+c 退不出来
             shot = get_raw_frame()
+            img_q.append(shot)
             if is_hora(shot):
                 return 'hora'
             if is_ryukyoku(shot):
                 return 'ryukyoku'
             time.sleep(POLLING_INTERVAL)
         return None
+    # TODO save的图片读不了
+    def save_img_q(self):
+        folder_name = './logs/change_watcher/' + datetime.now().strftime("%Y%m%d_%H%M%S")
+        os.makedirs(folder_name, exist_ok=True)
+
+        items = list(img_q)
+        img_q.clear()
+        idx = 0
+        for img in items:
+            # 生成文件名，例如 0001_funcname_L42.jpg
+            filename = os.path.join(folder_name, f"{idx:04d}.jpg")
+            img.tofile(filename)
+            idx += 1
+
+        print(f"共保存 {idx} 张图片到文件夹 {folder_name}")

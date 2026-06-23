@@ -251,6 +251,27 @@ class Game:
 
         # 非阻塞地把队列里已到达的中断信号取出；顺手到达的 player_change 暂存。
         def poll_interrupt():
+            
+#  [AI] {'type': 'none'} 
+#  [GAME] 玩家 2 摸切 7p 
+#  [AI] {'type': 'none'} 
+# change_watcher: player change to  3
+#  [GAME] 切换至玩家 3 
+#  [GAME] 玩家 3 摸牌 < ? > 
+#  [AI] {'type': 'none'} 
+# change_watcher: player change to  0
+# change_watcher: player change to  1
+#  [GAME] 玩家 3 打 7z 
+#  [AI] {'type': 'none'} 
+#  [GAME] 切换至玩家 1 
+# Traceback (most recent call last):
+#   File "C:\game\code\mjai\aiplay\kurumi\game.py", line 447, in <module>
+#     game.main()
+#   File "C:\game\code\mjai\aiplay\kurumi\game.py", line 365, in main
+#     raise RuntimeError('没有鸣牌的情况下并没有正确轮到下一位玩家')
+# RuntimeError: 没有鸣牌的情况下并没有正确轮到下一位玩家
+# 出现bug的原因是dev 读视频的情况，check_dahai_phase的过程中，将change_watcher生产的pid取出来了，使得change_watcher的视频游标往前走了，
+# 在check_dahai的过程中又再次生产了一个pid并被poll_interrupt取出来覆盖了导致的！
             while True:
                 try:
                     msg = self.watcher.q.get_nowait()
@@ -446,6 +467,8 @@ if __name__ == "__main__":
         # game.phase = Phase.Dahai
         game.main()
     except Exception as e:
+        # TODO 退出时要保证清理线程
+        game.watcher.save_img_q()
         save_img_q()
         print_with_color('游戏中止，打印中止时的GAME STATE', 'red')
         print(game.state)

@@ -9,7 +9,7 @@
 用法：
     import logger_setup  # 放在 main.py 最开头即可，之后无需再管
 """
-
+# TODO 仅在出现error时保存相关内容供复现bug就可以了
 import sys
 import os
 from datetime import datetime

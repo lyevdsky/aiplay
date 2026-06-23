@@ -44,7 +44,7 @@ def crop_kawa_tile(player, pos, riichi_index = None):
         # return cv2.rotate(screenshot[y:y+h, x:x+w], cv2.ROTATE_90_COUNTERCLOCKWISE)
     return x,y,w,h
 
-def rec_dahai(player, pos, riichi_index):
+def rec_dahai(player, pos, riichi_index, debug=False):
     x,y,w,h = crop_kawa_tile(player, pos, riichi_index)
 
     if player == 'self':
@@ -59,7 +59,7 @@ def rec_dahai(player, pos, riichi_index):
         h = h + 30
 
     img = get_screenshot((x,y,w,h), save=100)
-    result = check_tile(img, player, return_dict=True, debug=False)
+    result = check_tile(img, player, return_dict=True, debug=debug)
     # print(result)
     if result is None:
         return None
@@ -123,8 +123,8 @@ def check_dahai_claimed():
     result = rec_dahai(player_pos, player_info['kawa_index'], player_info['riichi_index'])
     return result is None
 
-# set_debug_screenshot('./error/0099_rec_dahai_L61.jpg')
-# res = rec_dahai('prev', 6, None)
+# set_debug_screenshot('./error/yolo_no_z5.jpg')
+# res = rec_dahai('prev', 2, None, debug=True)
 # print(res)
 # for i in range(100):
 #     set_debug_screenshot(f'./logs/20260617_165923/000{i}.jpg')

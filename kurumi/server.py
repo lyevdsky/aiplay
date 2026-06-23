@@ -38,7 +38,7 @@ async def websocket_endpoint(websocket: WebSocket):
     finally:
         clients.remove(websocket)
 
-
+# TODO 退出，中断game
 @app.post("/game/start")
 def game_start():
     with state_lock:
@@ -84,6 +84,7 @@ def run_one_game():
     except Exception as e:
         send_message({ type: 'error' })
         try:
+            game.watcher.save_img_q()
             save_img_q()
         except Exception as save_err:
             print(f"[SERVER] 存图失败: {save_err}")
