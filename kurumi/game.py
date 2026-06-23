@@ -106,9 +106,10 @@ class Game:
         state['position'] = position
         state['my_id'] = player_to_id['self']
 
-        # 同步后台线程的手番基准（庄家先手）
+        # 每局一条监视线程：设手番基准后拉起，终局中断时线程自退
         if self.watcher is not None:
             self.watcher.reset(oya_id, player_to_id)
+            self.watcher.start()
 
         id_to_score = {
             player_to_id[player]: score
@@ -248,8 +249,7 @@ class Game:
         # watcher 模式下，已从队列预取但本阶段还不该消费的 player_change 暂存于此
         self._pending_change = None
 
-        if self.watcher is not None:
-            self.watcher.start()
+        # 监视线程每局由 start_kyoku 拉起（终局自退），此处不再统一启动
 
         # 非阻塞地把队列里已到达的中断信号取出；顺手到达的 player_change 暂存。
         def poll_interrupt():
