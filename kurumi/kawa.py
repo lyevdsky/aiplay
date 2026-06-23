@@ -59,7 +59,7 @@ def rec_dahai(player, pos, riichi_index):
         h = h + 30
 
     img = get_screenshot((x,y,w,h), save=100)
-    result = check_tile(img, player, return_dict=True, debug=True)
+    result = check_tile(img, player, return_dict=True, debug=False)
     # print(result)
     if result is None:
         return None
@@ -126,9 +126,9 @@ def check_dahai_claimed():
     print('check_dahai_claimed: ', result is None)
     return result is None
 
-set_debug_screenshot('./error/yolo_error_4z.jpg')
-res = rec_dahai('next', 6, None)
-print(res)
+# set_debug_screenshot('./error/yolo_error_4z.jpg')
+# res = rec_dahai('next', 6, None)
+# print(res)
 # for i in range(100):
 #     set_debug_screenshot(f'./logs/20260617_165923/000{i}.jpg')
     # res = rec_dahai('prev', 6, None)
