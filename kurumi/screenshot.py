@@ -30,7 +30,7 @@ duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps   # 视频总时长（秒）
 
 def video_capture(reader='main'):
     video_start_ms = 0
-    video_start_ms = 24000
+    video_start_ms = 29000
     # 每个读取者一份独立游标，互不影响（main 低频认牌、watcher 高频盯 bar）。
     # cap 非线程安全，游标推进 + seek + read 必须整体串行。
     with _cap_lock:
@@ -93,6 +93,19 @@ def _read_source(reader='main'):
     if IS_DEV:
         return video_capture(reader)
     return camera.get_latest_frame()
+
+def align_reader_cursor(dst='watcher', src='main'):
+    """dev/replay 专用：把 dst 读取者的游标对齐到 src 的当前位置。
+    生产 dxcam 非消费、无游标，调用是空操作。
+
+    watcher 线程每局启动时调用：start_kyoku 已用 main 游标读过开局信息，
+    若 watcher 仍从 0 开始会读到开局前的过期帧。"""
+    with _cap_lock:
+        counts = getattr(video_capture, '_counts', None)
+        if counts is not None and src in counts:
+            counts[dst] = counts[src]
+    if _replay_files and src in _replay_idx:
+        _replay_idx[dst] = _replay_idx[src]
 
 def get_screenshot(region = None, save = 0):
     shot = _read_source('main')

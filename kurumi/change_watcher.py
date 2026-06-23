@@ -1,8 +1,8 @@
 import threading
 import queue
 import time
-
-from screenshot import get_raw_frame
+import cv2
+from screenshot import get_raw_frame, align_reader_cursor
 from kyoku import get_active_player
 from hora import is_interrupt, is_hora, is_ryukyoku
 from util import stable_func
@@ -46,6 +46,9 @@ class ChangeWatcher:
         下一局由主流程在 reset 后再次调用本方法新建线程。"""
         if self._running:
             return
+        # dev/replay：start_kyoku 已用 main 游标读过开局信息，watcher 游标
+        # 须对齐到 main 当前位置，否则会从头读到开局前的过期帧。
+        align_reader_cursor('watcher', 'main')
         self._running = True
         self._thread = threading.Thread(target=self._loop, daemon=True)
         self._thread.start()
@@ -58,7 +61,7 @@ class ChangeWatcher:
             # dev/replay：watcher 高频 spin 会让帧游标冲到 main 前面。
             # 队列尚有未消费信号时暂停取帧（不动游标），等 main 消费完再继续，
             # 使两个读取者的取帧进度大致同步，更贴近生产时序。
-            if IS_DEV and not self.q.empty():
+            if not self.q.empty():
                 time.sleep(POLLING_INTERVAL)
                 continue
 
@@ -69,6 +72,7 @@ class ChangeWatcher:
 
             #  中断即一局终点，推送后线程直接退出，无需等待下次 reset。
             if is_interrupt(shot):
+                cv2.imwrite('interrupt.png', shot)
                 interrupt = self._resolve_interrupt()
                 if interrupt is not None:
                     self.q.put({'type': interrupt})
@@ -88,9 +92,10 @@ class ChangeWatcher:
         """区分 hora / ryukyoku。这里允许短暂等待动画定型，
         但不阻塞主流程（主流程消费的是队列）。"""
         while self._running:
-            if is_hora():
+            shot = get_raw_frame()
+            if is_hora(shot):
                 return 'hora'
-            if is_ryukyoku():
+            if is_ryukyoku(shot):
                 return 'ryukyoku'
             time.sleep(POLLING_INTERVAL)
         return None

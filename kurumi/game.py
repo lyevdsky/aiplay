@@ -25,9 +25,10 @@ class Phase(Enum):
     Tsumo = 2
     Claim = 3
     Hora = 4
-    EndKyoku = 5
-    EndGame = 6
-    StartGame = 7
+    Ryukyoku = 5
+    EndKyoku = 6
+    EndGame = 7
+    StartGame = 8
 
 # TODO
 # ai print less !
@@ -326,9 +327,13 @@ class Game:
                 # 从队列消费时序信号：active bar 的亮灭转换由后台线程全程
                 # 盯着、转换即入队，不再受识别快慢拖累。
                 msg = wait_signal()
-                if msg['type'] in ('hora', 'ryukyoku'):
+                if msg['type'] == 'hora':
                     self.phase = Phase.Hora
                     continue
+                elif msg['type'] == 'ryukyoku':
+                    self.phase = Phase.Ryukyoku
+                    continue
+
                 player = msg['pid']
                 print_with_color(f'切换至玩家 {player}')
 
@@ -367,6 +372,10 @@ class Game:
 
             elif self.phase == Phase.Hora:
                 print_with_color('和了')
+                self.phase = Phase.EndKyoku
+
+            elif self.phase == Phase.Ryukyoku:
+                print_with_color('流局')
                 self.phase = Phase.EndKyoku
 
             elif self.phase == Phase.EndKyoku:

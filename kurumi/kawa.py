@@ -107,10 +107,8 @@ def _check_dahai():
     player_info = gamestate['player_info'][gamestate['current_player']]
 
     result = rec_dahai(player_pos, player_info['kawa_index'], player_info['riichi_index'])
-    # print('check dahai: ', player_pos, result)
     if result is not None:
         tile, tsumogiri, riichi = result
-        print('rec_daihai: ', tile, tsumogiri, riichi)
         return tile, tsumogiri, riichi
 
 check_dahai = stable_func(_check_dahai, debug=False)
@@ -123,7 +121,6 @@ def check_dahai_claimed():
     player_info = gamestate['player_info'][gamestate['current_player']]
 
     result = rec_dahai(player_pos, player_info['kawa_index'], player_info['riichi_index'])
-    print('check_dahai_claimed: ', result is None)
     return result is None
 
 # set_debug_screenshot('./error/0099_rec_dahai_L61.jpg')

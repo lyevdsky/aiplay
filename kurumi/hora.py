@@ -10,9 +10,13 @@ tsumo_template = cv2.imread('./ref/kyoku/tsumo.png')
 ryukyoku_template = cv2.imread('./ref/kyoku/ryukyoku.png')
 dora5_template = None
 _prev_is_hora = False
-def is_hora():
+def is_hora(shot=None):
     global _prev_is_hora
-    screenshot = get_screenshot(HORA_REGION, save=5)
+    if shot is None:
+        screenshot = get_screenshot(HORA_REGION, save=5)
+    else:
+        x,y,w,h = HORA_REGION
+        screenshot = shot[y:y+h, x:x+w]
     bool = has_template(screenshot, ron_template, hsv = HORA_HSV, debug=False)
     if not bool:
         bool = has_template(screenshot, tsumo_template, hsv = HORA_HSV, debug=False)
@@ -22,13 +26,15 @@ def is_hora():
         _prev_is_hora = False
     else:
         _prev_is_hora = bool
-    print('check hora: ', bool)
     return bool
 
-def is_ryukyoku():
-    screenshot = get_screenshot(RYUKYOKU_REGION, save=5)
+def is_ryukyoku(shot=None):
+    if shot is None:
+        screenshot = get_screenshot(RYUKYOKU_REGION, save=5)
+    else:
+        x,y,w,h = RYUKYOKU_REGION
+        screenshot = shot[y:y+h, x:x+w]
     bool = has_template(screenshot, ryukyoku_template, hsv = RYUKYOKU_HSV, debug=False)
-    print('check ryukyoku: ', bool)
     return bool
 
 def is_interrupt(shot=None):
