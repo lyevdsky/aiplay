@@ -287,7 +287,12 @@ class Game:
                 msg = self._pending_change
                 self._pending_change = None
                 return msg
-            return self.watcher.q.get()
+            # 带超时轮询，否则主线程会卡在 Queue 的 C 级锁里，Ctrl+C 无法生效
+            while True:
+                try:
+                    return self.watcher.q.get(timeout=0.5)
+                except queue.Empty:
+                    continue
 
         # check current_player kakan ankan dahai hora
         def check_dahai_phase():
@@ -393,13 +398,16 @@ class Game:
 
             elif self.phase == Phase.Hora:
                 print_with_color('和了')
+                self.watcher.stop()
                 self.phase = Phase.EndKyoku
 
             elif self.phase == Phase.Ryukyoku:
                 print_with_color('流局')
+                self.watcher.stop()
                 self.phase = Phase.EndKyoku
 
             elif self.phase == Phase.EndKyoku:
+                self.watcher.stop()
                 self.notify({
                     'type': 'end_kyoku'
                 })
@@ -461,13 +469,13 @@ listener = keyboard.Listener(on_press=on_press)
 listener.start()
 
 if __name__ == "__main__":
+    game = None
     try:
         game = Game()
         # game.start_with_state(_state_full_5)
         # game.phase = Phase.Dahai
         game.main()
     except Exception as e:
-        # TODO 退出时要保证清理线程
         game.watcher.save_img_q()
         save_img_q()
         print_with_color('游戏中止，打印中止时的GAME STATE', 'red')
@@ -476,3 +484,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print_with_color('游戏中止，打印中止时的GAME STATE', 'red')
         print(game.state)
+    finally:
+        # 无论正常退出、异常还是 Ctrl+C，都回收 watcher 线程
+        if game is not None:
+            game.watcher.stop()

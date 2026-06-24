@@ -58,7 +58,14 @@ class ChangeWatcher:
         self._thread.start()
 
     def stop(self):
+        """停止监视线程并等待其退出。一局结束 / 异常中止时务必调用：
+        daemon 线程不会随单局自动回收，残留线程会和下一局的新线程
+        并行抢同一帧源游标。join 有超时，避免极端情况下卡住调用方。"""
         self._running = False
+        t = self._thread
+        if t is not None and t.is_alive() and t is not threading.current_thread():
+            t.join(timeout=2)
+        self._thread = None
 
     def _loop(self):
         while self._running:
@@ -73,7 +80,6 @@ class ChangeWatcher:
             if shot is None or shot is False:
                 time.sleep(POLLING_INTERVAL)
                 continue
-            # TODO 流局九种九牌等，根据左上宝牌来判断对吗？
             #  中断即一局终点，推送后线程直接退出，无需等待下次 reset。
             if is_interrupt(shot): 
                 print('change_watcher: interrupt')
@@ -98,7 +104,6 @@ class ChangeWatcher:
         """区分 hora / ryukyoku。这里允许短暂等待动画定型，
         但不阻塞主流程（主流程消费的是队列）。"""
         while self._running:
-            # TODO 卡在这里ctrl+c 退不出来
             shot = get_raw_frame()
             img_q.append(shot)
             if is_hora(shot):
@@ -107,7 +112,7 @@ class ChangeWatcher:
                 return 'ryukyoku'
             time.sleep(POLLING_INTERVAL)
         return None
-    # TODO save的图片读不了
+
     def save_img_q(self):
         folder_name = './logs/change_watcher/' + datetime.now().strftime("%Y%m%d_%H%M%S")
         os.makedirs(folder_name, exist_ok=True)
@@ -116,9 +121,12 @@ class ChangeWatcher:
         img_q.clear()
         idx = 0
         for img in items:
-            # 生成文件名，例如 0001_funcname_L42.jpg
             filename = os.path.join(folder_name, f"{idx:04d}.jpg")
-            img.tofile(filename)
+            ok, buf = cv2.imencode('.jpg', img)
+            if not ok:
+                print(f"change_watcher: 第 {idx} 帧编码失败，跳过")
+                continue
+            buf.tofile(filename)
             idx += 1
 
         print(f"共保存 {idx} 张图片到文件夹 {folder_name}")

@@ -15,7 +15,7 @@ def ocr_digits(roi):
     digits = ''.join(c for c in result if c.isdigit())
     return int(digits) if digits.isdigit() else digits
 
-def compute_mask_ratios(img, hsv):
+def compute_mask_ratio(img, hsv):
     _hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     mask = cv2.inRange(_hsv, hsv[0], hsv[1])
     pixel_count = cv2.countNonZero(mask)
