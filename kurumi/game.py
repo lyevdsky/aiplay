@@ -66,7 +66,10 @@ class Game:
 
     def start_with_state(self, state):
         set_gamestate(state)
+        self.watcher.reset(self.state['current_player'], self.state['player_to_id'])
+        self.watcher.start()
         self.bot = None
+
 
     def start_kyoku(self):
         print("Starting new kyoku...")
@@ -342,7 +345,9 @@ class Game:
                     self.riichi_to_accepted = None
                     # time sleep 是为了避免立直时放立直棒的手，挡住已打牌，错判鸣牌。
                     time.sleep(0.5)
-                    # TODO 
+                    # TODO watcher 比main快时会发生，因为帧不同步导致的，watcher先判断到鸣牌切换到玩家1，但是main还没走到切换玩家的那一帧，导致检测是否被鸣牌时，因为被鸣的牌还在牌河，导致判断出错！
+                    # main 比watcher快时，在watcher追main的那个过程里，main也在loop check_interrupt. 导致main跳过了可以识别摸牌牌的那几帧
+                    # 也就是无论如何最好还是和生产环境一样，保证帧同步！
 #                 change_watcher: player change to  1
 #  [GAME] 切换至玩家 1 
 #  [GAME] 玩家 1 摸牌 < ? > 
@@ -460,13 +465,13 @@ def on_press(key):
 
 listener = keyboard.Listener(on_press=on_press)
 listener.start()
-
+_state_1 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 2, 'dora_markers': ['4s'], 'scores': [23000, 24500, 24500, 28000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 0, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 1, 'player_info': [{'kawa_index': 7, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 8, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 8, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 8, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
 if __name__ == "__main__":
     game = None
     try:
         game = Game()
-        # game.start_with_state(_state_full_5)
-        # game.phase = Phase.Dahai
+        game.start_with_state(_state_1)
+        game.phase = Phase.Tsumo
         game.main()
     except Exception as e:
         game.watcher.save_img_q()

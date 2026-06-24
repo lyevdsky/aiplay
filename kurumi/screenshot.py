@@ -31,6 +31,9 @@ duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps   # 视频总时长（秒）
 def video_capture(reader='main'):
     video_start_ms = 0
     video_start_ms = 29000
+    video_start_ms = 370000
+    video_start_ms = 503000
+    
     # 每个读取者一份独立游标，互不影响（main 低频认牌、watcher 高频盯 bar）。
     # cap 非线程安全，游标推进 + seek + read 必须整体串行。
     with _cap_lock:
