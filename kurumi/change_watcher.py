@@ -51,6 +51,12 @@ class ChangeWatcher:
         # dev/replay：start_kyoku 已用 main 游标读过开局信息，watcher 游标
         # 须对齐到 main 当前位置，否则会从头读到开局前的过期帧。
         align_reader_cursor('watcher', 'main')
+        # 清空q队列，避免之前对局异常终止，残留
+        while True:
+            try:
+                self.q.get_nowait()
+            except queue.Empty:
+                break
         self._running = True
         self._thread = threading.Thread(target=self._loop, daemon=True)
         self._thread.start()
@@ -67,6 +73,14 @@ class ChangeWatcher:
 
     def _loop(self):
         while self._running:
+            # 队列尚有未消费信号时暂停取帧（不动游标），等 main 消费完再继续，
+            # 使两个读取者的取帧进度大致同步。
+            # TODO 问题是重启时 在watcher追main的那个过程里，main也在loop check_interrupt. 导致main跳过了可以识别摸牌牌的那几帧
+            # 所以还是要唯一游标，完全同步。
+            if not self.q.empty():
+                time.sleep(POLLING_INTERVAL)
+                continue
+
             shot = get_raw_frame()
             img_q.append(shot)
             if shot is None or shot is False:
@@ -83,11 +97,15 @@ class ChangeWatcher:
                     # 问题是，在watcher追main的那个过程里，main也在loop check_interrupt. 导致main跳过了可以识别摸牌牌的那几帧
                     # 所以解决方式是一、让main停下来等watcher追上，这是不行的，正式环境没有这么傻逼的操作，不知道是interrupt还是change player
                     # 二、还是之前的想法，让watcher解耦main的逻辑，不等main或至少在main前面，那么就是sleep在获取了active后put前。而不是check active 前sleep。
-                    while not self.q.empty():
-                        time.sleep(POLLING_INTERVAL)
+                    # TODO问题是卡在这里，新一局时会仍然put上一局生成的事件！不管卡哪都一样
+                    # while not self.q.empty():
+                    #     if not self._running:
+                    #         return
+                    #     time.sleep(POLLING_INTERVAL)
                     self._current_player = pid
                     self.q.put({'type': 'player_change', 'pid': pid})
-                    print('change_watcher: player change to ', pid)
+                    text = f'change_watcher: player change to {pid}'
+                    print(text)
 
             time.sleep(POLLING_INTERVAL)
 

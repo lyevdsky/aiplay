@@ -59,8 +59,9 @@ def rec_dahai(player, pos, riichi_index, debug=False):
         h = h + 30
 
     img = get_screenshot((x,y,w,h), save=100)
-    # cv2.imshow('img' ,img)
-    # cv2.waitKey(0)
+    if debug:
+        cv2.imshow('img' ,img)
+        cv2.waitKey(0)
     result = check_tile(img, player, return_dict=True, debug=debug)
     # print(result)
     if result is None:
@@ -122,16 +123,18 @@ def check_dahai_claimed():
     player_pos = position[gamestate['current_player']]
     player_info = gamestate['player_info'][gamestate['current_player']]
 
-    result = rec_dahai(player_pos, player_info['kawa_index'], player_info['riichi_index'])
+    result = rec_dahai(player_pos, player_info['kawa_index'], player_info['riichi_index'], debug=True)
     return result is None
 
-# set_debug_screenshot('./error/0415_rec_dahai_L61.jpg')
-# res = rec_dahai('self', 7, None, debug=True)
+# set_debug_screenshot('./error/0060_rec_dahai_L61.jpg')
+# res = rec_dahai('next', 0, None, debug=True)
 # print(res)
 # for i in range(100):
-#     set_debug_screenshot(f'./logs/20260617_165923/000{i}.jpg')
-    # res = rec_dahai('prev', 6, None)
-    # print(res)
+#     # set_debug_screenshot(f'./logs/20260617_165923/000{i}.jpg')
+#     res = rec_dahai('next', 0, None)
+#     print(res)
+#     if res is not None and res[0] == '4z':
+#         save_img_q()
 # print(rec_tsumo())
 # if rec_tsumo() is not None:
 #     res = None

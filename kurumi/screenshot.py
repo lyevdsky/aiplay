@@ -14,7 +14,7 @@ if sys.platform == "win32":
     region = (0, 0, 2560, 1440)
     camera.start(target_fps=60)
 
-SHOW_SCREENSHOW = False
+SHOW_SCREENSHOW = True
 JPEG_QUALITY = 95
 img_q = deque(maxlen=500)
 saved_snapshots = {}   # {caller_info: [(buf, caller_info), ...]}，同一调用点再次触发会覆盖，save_img_q 时各存为一个子文件夹
@@ -79,11 +79,12 @@ def _next_replay_shot(reader='main'):
     if not _replay_files:
         return None
     cur = _replay_idx.get(reader, 0)
-    idx = min(cur, len(_replay_files) - 1)
+    if cur + 1 > len(_replay_files) - 1:
+        return None
     _replay_idx[reader] = cur + 1
-    return cv2.imread(_replay_files[idx])
+    return cv2.imread(_replay_files[cur + 1])
 
-# set_replay_folder('./logs/20260621_143003/snapshot_08_rec_dahai_L61')
+# set_replay_folder('./logs/test2')
 # set_replay_folder('./logs/20260621_162718')
 
 def _read_source(reader='main'):
