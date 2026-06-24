@@ -17,6 +17,7 @@ from pynput import keyboard
 from mortal.bot import Bot
 from kurumi.mortal.conv import format_output
 from change_watcher import ChangeWatcher
+from hora import check_interrupt
 import queue
 
 class Phase(Enum):
@@ -244,63 +245,32 @@ class Game:
     def main(self):
         state = self.state
 
-        # 已从队列预取但本阶段还不该消费的 player_change 暂存于此
-        self._pending_change = None
+        # 监视线程每局由 start_kyoku 拉起（main 在终局调用 stop 回收），此处不再统一启动
 
-        # 监视线程每局由 start_kyoku 拉起（终局自退），此处不再统一启动
-
-        # 非阻塞地把队列里已到达的中断信号取出；顺手到达的 player_change 暂存。
-        def poll_interrupt():
-            
-#  [AI] {'type': 'none'} 
-#  [GAME] 玩家 2 摸切 7p 
-#  [AI] {'type': 'none'} 
-# change_watcher: player change to  3
-#  [GAME] 切换至玩家 3 
-#  [GAME] 玩家 3 摸牌 < ? > 
-#  [AI] {'type': 'none'} 
-# change_watcher: player change to  0
-# change_watcher: player change to  1
-#  [GAME] 玩家 3 打 7z 
-#  [AI] {'type': 'none'} 
-#  [GAME] 切换至玩家 1 
-# Traceback (most recent call last):
-#   File "C:\game\code\mjai\aiplay\kurumi\game.py", line 447, in <module>
-#     game.main()
-#   File "C:\game\code\mjai\aiplay\kurumi\game.py", line 365, in main
-#     raise RuntimeError('没有鸣牌的情况下并没有正确轮到下一位玩家')
-# RuntimeError: 没有鸣牌的情况下并没有正确轮到下一位玩家
-# 出现bug的原因是dev 读视频的情况，check_dahai_phase的过程中，将change_watcher生产的pid取出来了，使得change_watcher的视频游标往前走了，
-# 在check_dahai的过程中又再次生产了一个pid并被poll_interrupt取出来覆盖了导致的！
-            while True:
-                try:
-                    msg = self.watcher.q.get_nowait()
-                except queue.Empty:
-                    return None
-                if msg['type'] in ('hora', 'ryukyoku'):
-                    return msg['type']
-                self._pending_change = msg
-
-        # Claim 阶段消费下一个时序信号：优先用预取暂存的，否则阻塞等队列。
+        # Claim 阶段消费下一个时序信号：阻塞等 watcher 的 player_change，
+        # 同时自己轮询终局中断（watcher 已不产中断，且此处可能一直等不到
+        # 下一个 player_change——比如这张牌被荣和 / 这局荒牌流局）。
+        # 带超时轮询，否则主线程会卡在 Queue 的 C 级锁里，Ctrl+C 无法生效。
         def wait_signal():
-            if self._pending_change is not None:
-                msg = self._pending_change
-                self._pending_change = None
-                return msg
-            # 带超时轮询，否则主线程会卡在 Queue 的 C 级锁里，Ctrl+C 无法生效
             while True:
                 try:
-                    return self.watcher.q.get(timeout=0.5)
+                    return self.watcher.q.get(timeout=POLLING_INTERVAL)
                 except queue.Empty:
-                    continue
+                    pass
+                # check_interrupt：非中断立即返回 None；已进入中断则阻塞到分辨出结果
+                interrupt = check_interrupt()
+                if interrupt is not None:
+                    return {'type': interrupt}
 
         # check current_player kakan ankan dahai hora
         def check_dahai_phase():
             player = state['current_player']
 
-            # 中断检测统一由 watcher 线程负责，主流程只从队列瞄一眼
-            interrupt = poll_interrupt()
-            if interrupt:
+            # 终局中断检测移回主流程：check_interrupt 一旦确认进入中断动画，
+            # 就阻塞等到分辨出 hora / ryukyoku 再返回，期间不再认牌，
+            # 避免吃碰杠 / 终局动画被误识别成打牌（见 hora.py 注释）。
+            interrupt = check_interrupt()
+            if interrupt is not None:
                 return interrupt
 
             meld = check_kan()

@@ -1,6 +1,5 @@
 import cv2
 import time
-from tile import check_tile
 from util import has_template, stable_func, find_contour, compute_mask_ratio
 from screenshot import get_screenshot, set_debug_screenshot, save_img_q
 from config import CONFIRM_TEXT_HSV, HORA_HSV, HORA_REGION, CONFIRM_REGION, CONFIRM_BG_HSV, POLLING_INTERVAL, DORA_FIRST_REGION, WHILE_HSV, SAME_TILE_HIGHLIGHT_HSV
@@ -8,31 +7,23 @@ from config import CONFIRM_TEXT_HSV, HORA_HSV, HORA_REGION, CONFIRM_REGION, CONF
 ron_template = cv2.imread('./ref/kyoku/hora.png')
 tsumo_template = cv2.imread('./ref/kyoku/tsumo.png')
 
-def is_hora(shot=None):
-    global _prev_is_hora
-    if shot is None:
-        screenshot = get_screenshot(HORA_REGION, save=5)
-    else:
-        x,y,w,h = HORA_REGION
-        screenshot = shot[y:y+h, x:x+w]
+def is_hora():
+    screenshot = get_screenshot(HORA_REGION, save=5)
     bool = has_template(screenshot, ron_template, hsv = HORA_HSV, debug=False)
     if not bool:
         bool = has_template(screenshot, tsumo_template, hsv = HORA_HSV, debug=False)
     
     return bool
 
-def is_ryukyoku(shot=None):
-    x,y,w,h = CONFIRM_REGION
-    screenshot = shot[y:y+h, x:x+w]
+def is_ryukyoku():
+    screenshot = get_screenshot(CONFIRM_REGION, save=5)
     ratio = compute_mask_ratio(screenshot, CONFIRM_BG_HSV)
     ratio2 = compute_mask_ratio(screenshot, CONFIRM_TEXT_HSV)
     return (ratio + ratio2) > 0.9
 
-def is_interrupt(shot=None):
+def is_interrupt():
     x,y,w,h = DORA_FIRST_REGION
-    if shot is None:
-        shot = get_screenshot(save=10)
-    doraimg = shot[y:y+h,x:x+w]
+    doraimg = get_screenshot(DORA_FIRST_REGION, save=10)
     cs = find_contour(doraimg, WHILE_HSV, min_area= w * h * 0.9, debug=False)
 
     if len(cs) == 0:
@@ -58,10 +49,11 @@ def check_interrupt():
             return 'ryukyoku'
         time.sleep(0.5)
 
-set_debug_screenshot('./error/kyuhai.png')
+# set_debug_screenshot('./error/kyuhai.png')
 
 # res = is_interrupt()
 # print(res)
-res = is_ryukyoku(get_screenshot())
+# res = check_interrupt()
+# print(res)
 # bool = is_hora()
 # print(bool)
