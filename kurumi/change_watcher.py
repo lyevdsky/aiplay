@@ -67,12 +67,6 @@ class ChangeWatcher:
 
     def _loop(self):
         while self._running:
-            # 队列尚有未消费信号时暂停取帧（不动游标），等 main 消费完再继续，
-            # 使两个读取者的取帧进度大致同步。
-            if not self.q.empty():
-                time.sleep(POLLING_INTERVAL)
-                continue
-
             shot = get_raw_frame()
             img_q.append(shot)
             if shot is None or shot is False:
@@ -83,6 +77,14 @@ class ChangeWatcher:
             if active is not None:
                 pid = self._player_to_id[active]
                 if pid != self._current_player:
+                    # 队列尚有未消费信号时就不put，等main追上帧进度
+                    # 在取帧前暂缓的话会虽然同步了但也导致了停下了，测试环境还得追上main。 而卡在put之前，而不是put完stop，可让watcher始终走在main前面
+                    # 不对不对，只要watcher是按帧顺序取的话，是不会产生错误的！顺序没有问题，
+                    # 问题是，在watcher追main的那个过程里，main也在loop check_interrupt. 导致main跳过了可以识别摸牌牌的那几帧
+                    # 所以解决方式是一、让main停下来等watcher追上，这是不行的，正式环境没有这么傻逼的操作，不知道是interrupt还是change player
+                    # 二、还是之前的想法，让watcher解耦main的逻辑，不等main或至少在main前面，那么就是sleep在获取了active后put前。而不是check active 前sleep。
+                    while not self.q.empty():
+                        time.sleep(POLLING_INTERVAL)
                     self._current_player = pid
                     self.q.put({'type': 'player_change', 'pid': pid})
                     print('change_watcher: player change to ', pid)

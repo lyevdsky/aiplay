@@ -342,7 +342,30 @@ class Game:
                     self.riichi_to_accepted = None
                     # time sleep 是为了避免立直时放立直棒的手，挡住已打牌，错判鸣牌。
                     time.sleep(0.5)
+                    # TODO 
+#                 change_watcher: player change to  1
+#  [GAME] 切换至玩家 1 
+#  [GAME] 玩家 1 摸牌 < ? > 
+#  [AI] {'type': 'none'} 
+#  [GAME] 玩家 1 pon < ['5m', '0m'] > 
+#  6m识别成9m了，kyo.mp4 8:46
+#  [GAME] 玩家 0 摸牌 < 6m > 
+#  [AI] {'type': 'dahai', 'actor': 0, 'pai': '6m', 'tsumogiri': True, 'meta': {'q_values': [0.0114046335, -3.751009, -3.6414447, -0.08666313, -6.6993093, -6.6142178, -7.7626953, -7.808297, -7.764924, -7.632497, -7.5305443], 'mask_bits': 34374205856, 'is_greedy': True, 'batch_size': 1, 'eval_time_ns': 50863600, 'shanten': 1, 'at_furiten': False}, 'values': [{'label': '6m', 'q_value': 0.0114046335}, {'label': '6p', 'q_value': -0.08666313}, {'label': '9m', 'q_value': -3.6414447}, {'label': '8m', 'q_value': -3.751009}, {'label': '1s', 'q_value': -6.6142178}, {'label': '7p', 'q_value': -6.6993093}, {'label': '0p', 'q_value': -7.5305443}, {'label': '6s', 'q_value': -7.632497}, {'label': '2s', 'q_value': -7.7626953}, {'label': '5s', 'q_value': -7.764924}, {'label': '3s', 'q_value': -7.808297}]} 
+# change_watcher: player change to  1
+#  [GAME] 玩家 0 打 9m 
 
+# TODO 4p被识别成摸切5z kyo 8:47 并非识别错误，而是不知道什么原因，导致main里的循环过了很多帧，导致跳了一巡
+#  [GAME] 玩家 1 摸牌 < ? > 
+#  [AI] {'type': 'none'} 
+# 误检测为z5 0.35774946921443734
+#  [GAME] 玩家 1 摸切 5z 
+#  [AI] {'type': 'none'} 
+#  [GAME] 切换至玩家 2 
+# change_watcher: player change to  3
+#  [GAME] 玩家 2 摸牌 < ? > 
+#  [AI] {'type': 'none'} 
+#  [GAME] 玩家 2 chi < ['3p', '5p'] > 
+# TODO 没有清空上一局残留的watcher.q change_watcher: player change to  0
                 claimed = check_dahai_claimed()
 
                 state['current_player'] = player
