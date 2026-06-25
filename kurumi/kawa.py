@@ -123,7 +123,7 @@ def check_dahai_claimed():
     player_pos = position[gamestate['current_player']]
     player_info = gamestate['player_info'][gamestate['current_player']]
 
-    result = rec_dahai(player_pos, player_info['kawa_index'], player_info['riichi_index'], debug=True)
+    result = rec_dahai(player_pos, player_info['kawa_index'], player_info['riichi_index'], debug=False)
     return result is None
 
 # set_debug_screenshot('./error/0060_rec_dahai_L61.jpg')

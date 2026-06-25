@@ -14,7 +14,7 @@ if sys.platform == "win32":
     region = (0, 0, 2560, 1440)
     camera.start(target_fps=60)
 
-SHOW_SCREENSHOW = True
+SHOW_SCREENSHOW = False
 JPEG_QUALITY = 95
 img_q = deque(maxlen=500)
 saved_snapshots = {}   # {caller_info: [(buf, caller_info), ...]}，同一调用点再次触发会覆盖，save_img_q 时各存为一个子文件夹
@@ -28,91 +28,69 @@ _cap_lock = threading.Lock()
 fps = cap.get(cv2.CAP_PROP_FPS)
 duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps   # 视频总时长（秒）
 
-def video_capture(reader='main'):
-    video_start_ms = 0
-    video_start_ms = 29000
-    video_start_ms = 370000
-    video_start_ms = 503000
-    
-    # 每个读取者一份独立游标，互不影响（main 低频认牌、watcher 高频盯 bar）。
-    # cap 非线程安全，游标推进 + seek + read 必须整体串行。
-    with _cap_lock:
-        if not hasattr(video_capture, '_counts'):
-            video_capture._counts = {}
-        count = video_capture._counts.get(reader, 0)
-        ms = video_start_ms + count * (1000 * POLLING_INTERVAL)
-        video_capture._counts[reader] = count + 1
+VIDEO_START_MS = 29000       # dev 视频以这一毫秒处作为游标 0
+# VIDEO_START_MS = 503000
 
+# ── 单一游标 ──────────────────────────────────────────────────
+# 全局只有一个游标，代表"当前这一帧"。任何 reader 取帧（_read_source）都只读
+# 当前游标指向的帧，不区分身份、不等待、不自动推进。游标的前进由 advance_cursor
+# 单独负责，并只在 main 侧的 get_screenshot 里调用——于是视频快慢只跟 main 取帧
+# 节奏挂钩，与墙钟、调试暂停无关；watcher 只是顺手读当前帧，读到重复也无妨。
+_cursor = 0                   # 当前帧序号
+
+def advance_cursor():
+    """推进游标前进一格。仅由 main 侧（get_screenshot）调用。"""
+    global _cursor
+    _cursor += 1
+
+def _video_frame_at(pos):
+    """dev：按游标位置 seek 出视频对应毫秒处的帧；越界返回 False。"""
+    ms = VIDEO_START_MS + pos * (1000 * POLLING_INTERVAL)
+    # cap(底层 ffmpeg)非线程安全：main 与 watcher 并发 set+read 会踩坏
+    # 解码器状态导致崩溃，故 seek+read 必须整体串行。
+    with _cap_lock:
         cap.set(cv2.CAP_PROP_POS_MSEC, ms)   # 跳转到 ms 毫秒
         ret, frame = cap.read()
-    if ret:
-        return frame
-    return False
-
-# img = video_capture()
-# cv2.imwrite('dora1_error.png', img)
+    return frame if ret else False
 
 def set_debug_screenshot(path):
     global _debug_screenshot
     img = cv2.imread(path)
     _debug_screenshot = img
+    print('设置了DEBUG screenshot: ', path)
 
-# 复现用：从 logs/xxx 文件夹按文件名顺序逐张读取。
-# 每个读取者（main / watcher）各持独立游标，回放生产环境的并行取帧。
+# 复现用：从 logs/xxx 文件夹按文件名顺序逐张读取，所有 reader 共用上面的单游标。
 _replay_files = []
-_replay_idx = {}
 
 def set_replay_folder(folder):
-    """指定一个 logs 下保存过的文件夹，之后取帧会按顺序逐张返回其中的图片。"""
-    global _replay_files, _replay_idx, _debug_screenshot
+    """指定一个 logs 下保存过的文件夹，之后取帧按游标位置返回其中的图片。"""
+    global _replay_files, _debug_screenshot, _cursor
     _replay_files = sorted(
         os.path.join(folder, f)
         for f in os.listdir(folder)
         if f.lower().endswith((".jpg", ".png"))
     )
-    _replay_idx = {}
     _debug_screenshot = None
+    _cursor = 0                  # 换帧源，游标从头开始
     print(f"replay: 载入 {len(_replay_files)} 张图片，来自 {folder}")
-
-def _next_replay_shot(reader='main'):
-    """返回该读取者的下一张复现图片；播放完后停留在最后一张。"""
-    if not _replay_files:
-        return None
-    cur = _replay_idx.get(reader, 0)
-    if cur + 1 > len(_replay_files) - 1:
-        return None
-    _replay_idx[reader] = cur + 1
-    return cv2.imread(_replay_files[cur + 1])
 
 # set_replay_folder('./logs/test2')
 # set_replay_folder('./logs/20260621_162718')
 
-def _read_source(reader='main'):
-    """统一取帧入口：按读取者身份从当前帧源取下一帧。
-    生产 dxcam 非消费，replay/video 各读取者独立游标。"""
+def _read_source():
+    """统一取帧入口：只读当前游标指向的那一帧，不区分 reader、不推进游标。
+    dev/replay 下全局共用一个游标；生产直接取摄像头最新帧。"""
     if _debug_screenshot is not None:
         return _debug_screenshot
+    if not IS_DEV and not _replay_files:
+        return camera.get_latest_frame()
     if _replay_files:
-        return _next_replay_shot(reader)
-    if IS_DEV:
-        return video_capture(reader)
-    return camera.get_latest_frame()
-
-def align_reader_cursor(dst='watcher', src='main'):
-    """dev/replay 专用：把 dst 读取者的游标对齐到 src 的当前位置。
-    生产 dxcam 非消费、无游标，调用是空操作。
-
-    watcher 线程每局启动时调用：start_kyoku 已用 main 游标读过开局信息，
-    若 watcher 仍从 0 开始会读到开局前的过期帧。"""
-    with _cap_lock:
-        counts = getattr(video_capture, '_counts', None)
-        if counts is not None and src in counts:
-            counts[dst] = counts[src]
-    if _replay_files and src in _replay_idx:
-        _replay_idx[dst] = _replay_idx[src]
+        return cv2.imread(_replay_files[_cursor]) if _cursor < len(_replay_files) else None
+    return _video_frame_at(_cursor)
 
 def get_screenshot(region = None, save = 0):
-    shot = _read_source('main')
+    shot = _read_source()
+    advance_cursor()   # main 侧每取一帧推进游标，watcher 读到的"当前帧"随之前进
 
     frame = sys._getframe(1)
     caller_info = f"{frame.f_code.co_name}_L{frame.f_lineno}"
@@ -145,9 +123,9 @@ def get_screenshot(region = None, save = 0):
     return shot
 
 def get_raw_frame():
-    """给后台 watcher 线程用的轻量取帧：不入 img_q、不做 region 裁剪、
-    不记录 caller 快照。replay/video 下持 'watcher' 独立游标，与 main 互不影响。"""
-    return _read_source('watcher')
+    """给后台 watcher 线程用的轻量取帧：不入 img_q、不做 region 裁剪、不记录
+    caller 快照、也不推进游标。只读当前游标那一帧，读到与上次相同也无妨。"""
+    return _read_source()
 
 def save_img_q(path = None):
     if path == None:

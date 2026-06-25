@@ -1,50 +1,76 @@
 """跑完测试数据（dev 下即 ./video/kyo.mp4），打印 ChangeWatcher 生成的 q 队列。
 
-直接复用 ChangeWatcher 的逐帧判定逻辑，但同步驱动：
-- 不起后台线程、不 sleep、不做「队列非空就暂停取帧」的 dev 同步暂停
-  （那只是回放时与 main 对齐节奏用的，与产出的时序信号无关）；
-- 用 watcher 自己的取帧入口 get_raw_frame()，读到 False/None 即视为数据跑完。
+起真实的 ChangeWatcher 后台线程，按生产方式从 q 消费时序信号。
+新的单游标模型下，游标只由 main 侧的 advance_cursor 推动；本测试没有 main，
+故用一个「驱动线程」按 POLLING_INTERVAL 节奏推进游标、模拟 main 逐帧消费视频
+（与 watcher 取帧 ~1:1）。驱动线程读到 False/None 即视为测试数据跑完，停掉
+自身与 watcher；watcher 若先因终局中断自退，消费循环也会收工。
 
 用法：cd kurumi && python test_change_watcher.py
 """
 import queue
+import threading
+import time
 
-import cv2
-from screenshot import get_raw_frame
+from screenshot import get_raw_frame, advance_cursor
 from change_watcher import ChangeWatcher
+from config import POLLING_INTERVAL
 
 
 def run_over_test_data(current_player=0,
                        player_to_id=None,
-                       max_frames=100000):
+                       max_signals=100000):
     if player_to_id is None:
         # 仅为演示队列产出，用恒等映射；真实运行时由 rec_kyoku_info 推出
         player_to_id = {'self': 0, 'next': 1, 'across': 2, 'prev': 3}
 
     w = ChangeWatcher()
-    w.q.put({'type': 'player_change', 'pid': 1 })
     w.reset(current_player, player_to_id)
-    w.start()
-    events = []          # 与 w.q 同步留存，便于最后统一打印
-    frames = 0
-    while frames < max_frames:
-        frames += 1
-        print(f'\r已取帧 {frames}', end='', flush=True)
-        while True:
-            try:
-                res = w.q.get(timeout=0.5)
+    w.start()        # 内部会先清空 q，故无需手动预置信号
+
+    # 游标驱动：模拟 main 每 POLLING_INTERVAL 取一帧推进一次游标，
+    # 读到 False/None 即数据耗尽，顺手停掉 watcher。
+    done = threading.Event()
+
+    def drive():
+        while not done.is_set():
+            advance_cursor()
+            shot = get_raw_frame()
+            if shot is None or shot is False:
                 break
-            except queue.Empty:
-                pass
-        events.append((frames, res))
-    
+            time.sleep(POLLING_INTERVAL)
+        done.set()
+        w.stop()
+
+    threading.Thread(target=drive, daemon=True).start()
+
+    events = []
+    while len(events) < max_signals:
+        try:
+            ev = w.q.get(timeout=0.2)
+        except queue.Empty:
+            # 数据耗尽，或 watcher 终局自退且队列已空 -> 收工
+            if done.is_set() or not w._running:
+                break
+            continue
+        events.append(ev)
+        print(f'\r已收信号 {len(events)}', end='', flush=True)
+
+    done.set()
+    w.stop()
+    # 收尾：取走队列里可能残留的信号
+    while True:
+        try:
+            events.append(w.q.get_nowait())
+        except queue.Empty:
+            break
+
     print('\n========== q 队列最终内容 ==========')
-    print(f'共处理 {frames} 帧，产出 {len(events)} 个信号\n')
-    for i, (fno, ev) in enumerate(events):
-        print(f'{i:02d}  @帧{fno:<6} {ev}')
-    # expected = (w._current_player + 1) % 4
-                # if pid != expected:
+    print(f'产出 {len(events)} 个信号\n')
+    for i, ev in enumerate(events):
+        print(f'{i:02d}  {ev}')
     return events
 
+
 if __name__ == '__main__':
-    run_over_test_data(1, {'self': 3, 'next': 0, 'across': 1, 'prev': 2}, max_frames = 204)
+    run_over_test_data(1, {'self': 3, 'next': 0, 'across': 1, 'prev': 2})

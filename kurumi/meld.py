@@ -186,11 +186,11 @@ def rec_new_meld():
 #     set_debug_screenshot(f'./logs/20260615_133324/000{i}.jpg')
 #     rec_new_meld()
 
-set_debug_screenshot('./error/0004_rec_new_meld_L131.jpg')
+# set_debug_screenshot('./error/0004_rec_new_meld_L131.jpg')
 # # # # set_debug_screenshot('./logs/20260617_154527/0009.jpg')
-set_gamestate({'honba': 1, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_markers': ['8s'], 'scores': [43000, 25000, 25000, 7000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 1, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 13, 'riichi_index': None, 'melds': [{'type': 'chi', 'consumed': ['4p', '2p'], 'tile': '3p'}], 'riichi': False}, {'kawa_index': 14, 'riichi_index': None, 'riichi': False, 'melds': [{'type': 'chi', 'consumed': ['4p', '5p'], 'tile': '6p'}]}, {'kawa_index': 14, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['5s', '0s'], 'tile': '5s'}]}, {'kawa_index': 13, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'chi', 'consumed': ['6s', '5s'], 'tile': '4s'}]}], 'my_id': 0})
-res = rec_new_meld()
-print(res)
+# set_gamestate({'honba': 1, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_markers': ['8s'], 'scores': [43000, 25000, 25000, 7000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 1, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 13, 'riichi_index': None, 'melds': [{'type': 'chi', 'consumed': ['4p', '2p'], 'tile': '3p'}], 'riichi': False}, {'kawa_index': 14, 'riichi_index': None, 'riichi': False, 'melds': [{'type': 'chi', 'consumed': ['4p', '5p'], 'tile': '6p'}]}, {'kawa_index': 14, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['5s', '0s'], 'tile': '5s'}]}, {'kawa_index': 13, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'chi', 'consumed': ['6s', '5s'], 'tile': '4s'}]}], 'my_id': 0})
+# res = rec_new_meld()
+# print(res)
 
 stabled_rec_new_meld = stable_func(rec_new_meld)
 

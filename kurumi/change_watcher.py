@@ -4,7 +4,7 @@ import threading
 import queue
 import time
 import cv2
-from screenshot import get_raw_frame, align_reader_cursor
+from screenshot import get_raw_frame
 from kyoku import get_active_player
 from util import stable_func
 from config import POLLING_INTERVAL, IS_DEV
@@ -48,9 +48,6 @@ class ChangeWatcher:
         调用 stop() 回收，下一局在 reset 后再次调用本方法新建线程。"""
         if self._running:
             return
-        # dev/replay：start_kyoku 已用 main 游标读过开局信息，watcher 游标
-        # 须对齐到 main 当前位置，否则会从头读到开局前的过期帧。
-        align_reader_cursor('watcher', 'main')
         # 清空q队列，避免之前对局异常终止，残留
         while True:
             try:
@@ -63,8 +60,7 @@ class ChangeWatcher:
 
     def stop(self):
         """停止监视线程并等待其退出。一局结束 / 异常中止时务必调用：
-        daemon 线程不会随单局自动回收，残留线程会和下一局的新线程
-        并行抢同一帧源游标。join 有超时，避免极端情况下卡住调用方。"""
+        daemon 线程不会随单局自动回收 """
         self._running = False
         t = self._thread
         if t is not None and t.is_alive() and t is not threading.current_thread():
@@ -91,17 +87,6 @@ class ChangeWatcher:
             if active is not None:
                 pid = self._player_to_id[active]
                 if pid != self._current_player:
-                    # 队列尚有未消费信号时就不put，等main追上帧进度
-                    # 在取帧前暂缓的话会虽然同步了但也导致了停下了，测试环境还得追上main。 而卡在put之前，而不是put完stop，可让watcher始终走在main前面
-                    # 不对不对，只要watcher是按帧顺序取的话，是不会产生错误的！顺序没有问题，
-                    # 问题是，在watcher追main的那个过程里，main也在loop check_interrupt. 导致main跳过了可以识别摸牌牌的那几帧
-                    # 所以解决方式是一、让main停下来等watcher追上，这是不行的，正式环境没有这么傻逼的操作，不知道是interrupt还是change player
-                    # 二、还是之前的想法，让watcher解耦main的逻辑，不等main或至少在main前面，那么就是sleep在获取了active后put前。而不是check active 前sleep。
-                    # TODO问题是卡在这里，新一局时会仍然put上一局生成的事件！不管卡哪都一样
-                    # while not self.q.empty():
-                    #     if not self._running:
-                    #         return
-                    #     time.sleep(POLLING_INTERVAL)
                     self._current_player = pid
                     self.q.put({'type': 'player_change', 'pid': pid})
                     text = f'change_watcher: player change to {pid}'
