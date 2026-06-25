@@ -10,7 +10,7 @@ from gamestate import get_gamestate, init_gamestate, set_gamestate
 from hand import rec_hand, check_tsumo, rec_tsumo
 from kawa import check_dahai, check_dahai_claimed
 from meld import check_new_meld, check_kan
-from util import polling
+from util import polling, timed
 from config import POLLING_INTERVAL, IS_DEV
 from enum import Enum
 from pynput import keyboard
@@ -58,10 +58,10 @@ class Game:
         self.need_open_dora = 0
         self.phase = Phase.StartGame
         self.remaining_tsumo = 70
-        if IS_DEV:
-            self.bot = None
-        else:
-            self.bot = Bot()
+        # if IS_DEV:
+            # self.bot = None
+        # else:
+        self.bot = Bot()
         self.listener = listener
         # watcher 永远起：dev/replay 下两个读取者各持独立游标读同一帧源，
         # 复刻生产环境的并行取帧，main 流程不区分 dev/生产。
@@ -413,14 +413,15 @@ class Game:
         if self.bot is None:
             return
         
-        if message['type'] == 'start_kyoku':
-            self.bot.start(self.state['my_id'])
-            react = self.bot.react(message)
-        elif message['type'] == 'end_kyoku':
-            react = self.bot.react(message)
-            self.bot.end()
-        else:
-            react = self.bot.react(message)
+        with timed('bot.react(AI)'):
+            if message['type'] == 'start_kyoku':
+                self.bot.start(self.state['my_id'])
+                react = self.bot.react(message)
+            elif message['type'] == 'end_kyoku':
+                react = self.bot.react(message)
+                self.bot.end()
+            else:
+                react = self.bot.react(message)
         if 'error' in react:
             raise RuntimeError('AI React Error', react['error'])
         

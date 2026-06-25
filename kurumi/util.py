@@ -7,13 +7,39 @@ import pytesseract
 import asyncio
 import ddddocr
 
+# ── 临时性能埋点 ───────────────────────────────────────────────
+# 累加各埋点的总耗时/次数，进程退出（Ctrl-C 也算）时打印。定位完即可删。
+import atexit, collections
+_T = collections.defaultdict(lambda: [0.0, 0])
+
+class timed:
+    """with timed('名字'): ... —— 累加这段代码的耗时与次数。"""
+    def __init__(self, key):
+        self.key = key
+    def __enter__(self):
+        self._t = time.perf_counter()
+        return self
+    def __exit__(self, *a):
+        rec = _T[self.key]
+        rec[0] += time.perf_counter() - self._t
+        rec[1] += 1
+
+@atexit.register
+def _dump_timing():
+    if not _T:
+        return
+    print('\n===== 耗时埋点（按总耗时降序） =====')
+    for k, (tot, n) in sorted(_T.items(), key=lambda x: -x[1][0]):
+        print(f'{k:24} {tot:8.2f}s  x{n:<7} {tot / max(n, 1) * 1000:7.1f} ms/次')
+
 ocr = ddddocr.DdddOcr(show_ad=False)
 def ocr_digits(roi):
-    _, encoded = cv2.imencode('.png', roi)
-    result = ocr.classification(encoded.tobytes())
-    result = result.replace('o', '0').replace('O', '0').replace('l', '1').replace('I', '1')
-    digits = ''.join(c for c in result if c.isdigit())
-    return int(digits) if digits.isdigit() else digits
+    with timed('ocr_digits'):
+        _, encoded = cv2.imencode('.png', roi)
+        result = ocr.classification(encoded.tobytes())
+        result = result.replace('o', '0').replace('O', '0').replace('l', '1').replace('I', '1')
+        digits = ''.join(c for c in result if c.isdigit())
+        return int(digits) if digits.isdigit() else digits
 
 def compute_mask_ratio(img, hsv):
     _hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -24,6 +50,7 @@ def compute_mask_ratio(img, hsv):
     return percentage
 
 def find_contour(img, hsv, min_area = 500, debug = False):
+  with timed('find_contour'):
     imghsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     hsvlist = [hsv]
     if isinstance(hsv[0], list):
@@ -59,6 +86,7 @@ def filter_cyan(img, hsv):
     return mask
 
 def has_template(image, template, threshold=0.8, hsv = None, debug = False):
+  with timed('has_template'):
     if hsv is not None:
         image = filter_cyan(image, hsv)
         template = filter_cyan(template, hsv)
