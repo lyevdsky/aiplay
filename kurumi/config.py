@@ -1,4 +1,4 @@
-IS_DEV = False
+IS_DEV = True
 POLLING_INTERVAL = 0.03 if not IS_DEV else 0.05
 
 # color
@@ -7,7 +7,7 @@ RED_HSV_2 = [(165, 80, 80), (180, 255, 255)]
 GREEN_HSV = [(40, 60, 60), (80, 255, 255)]
 BLACK_HSV = [(0, 0, 0), (180, 100, 180)]
 WHILE_HSV = [(0, 0, 230), (180, 20, 255)] # 亮白色，牌面背景色
-TILE_WHILE_HSV = [(0, 0, 160), (180, 20, 255)] # 包括模切的灰白
+TILE_WHILE_HSV = [(0, 0, 165), (180, 20, 255)] # 包括模切的灰白 注意不要包括摸切的侧面更灰的部分
 SAME_TILE_HIGHLIGHT_HSV = [(100,70, 200), (110, 130,255)] # 同牌提示的蓝
 # GRAY_HSV = []
 
@@ -51,3 +51,7 @@ HORA_REGION = (1375, 190, 220, 145)
 RYUKYOKU_REGION = (900, 470, 800, 240)
 HORA_HSV = [(20, 100, 220), (35, 255, 255)]
 RYUKYOKU_HSV = [(0,0,250), (180,255,255)]
+
+CONFIRM_REGION = (2220, 1250, 250, 70)
+CONFIRM_BG_HSV = [(85,135,250), (100,160,255)]
+CONFIRM_TEXT_HSV = [(100, 190, 95), (105, 195, 105)]

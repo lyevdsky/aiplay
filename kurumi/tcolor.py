@@ -9,7 +9,7 @@ def get_rgb(img, x, y):
     return int(r), int(g), int(b)
 
 # img = cv2.imread("./video/ryukyoku.png")
-img = cv2.imread('./error/0099_rec_dahai_L61.jpg')
+img = cv2.imread('./error/kyuhai.png')
 
 
 x, y = 1957, 948
@@ -43,10 +43,10 @@ def show(*_):
     result = cv2.bitwise_and(img, img, mask=mask)
     cv2.imshow("Mask", mask)
     cv2.imshow("Result", result)
-    cv2.imshow("Original", img)
+    # cv2.imshow("Original", img)
 
     if not _windows_positioned:
-        cv2.moveWindow("Original", 0, 0)
+        # cv2.moveWindow("Original", 0, 0)
         cv2.moveWindow("Mask", 400, 0)
         cv2.moveWindow("Result", 800, 0)
         _windows_positioned = True

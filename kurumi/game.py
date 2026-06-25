@@ -5,18 +5,20 @@ import json
 import time
 
 from screenshot import get_screenshot, save_img_q
-from kyoku import rec_kyoku_info, check_player_change, check_new_dora_marker, wait_new_kyoku
+from kyoku import rec_kyoku_info, check_new_dora_marker, wait_new_kyoku
 from gamestate import get_gamestate, init_gamestate, set_gamestate
 from hand import rec_hand, check_tsumo, rec_tsumo
 from kawa import check_dahai, check_dahai_claimed
 from meld import check_new_meld, check_kan
-from hora import check_interrupt
-from util import polling
-from config import POLLING_INTERVAL
+from util import polling, timed
+from config import POLLING_INTERVAL, IS_DEV
 from enum import Enum
 from pynput import keyboard
 from mortal.bot import Bot
 from kurumi.mortal.conv import format_output
+from change_watcher import ChangeWatcher
+from hora import check_interrupt
+import queue
 
 class Phase(Enum):
     StartKyoku = 0
@@ -24,13 +26,13 @@ class Phase(Enum):
     Tsumo = 2
     Claim = 3
     Hora = 4
-    EndKyoku = 5
-    EndGame = 6
-    StartGame = 7
+    Ryukyoku = 5
+    EndKyoku = 6
+    EndGame = 7
+    StartGame = 8
 
 # TODO
 # ai print less !
-# new kyoku gameloop !!!!!!!!!!! 
 # 听牌提示 认为打牌问题 o
 # 打牌太快问题。 !
 # 杠 哪个问题
@@ -56,12 +58,21 @@ class Game:
         self.need_open_dora = 0
         self.phase = Phase.StartGame
         self.remaining_tsumo = 70
+        # if IS_DEV:
+            # self.bot = None
+        # else:
         self.bot = Bot()
         self.listener = listener
+        # watcher 永远起：dev/replay 下两个读取者各持独立游标读同一帧源，
+        # 复刻生产环境的并行取帧，main 流程不区分 dev/生产。
+        self.watcher = ChangeWatcher()
 
     def start_with_state(self, state):
         set_gamestate(state)
+        self.watcher.reset(self.state['current_player'], self.state['player_to_id'])
+        self.watcher.start()
         self.bot = None
+
 
     def start_kyoku(self):
         print("Starting new kyoku...")
@@ -100,6 +111,10 @@ class Game:
         state['player_to_id'] = player_to_id
         state['position'] = position
         state['my_id'] = player_to_id['self']
+
+        # 每局一条监视线程：设手番基准后拉起，终局中断时线程自退
+        self.watcher.reset(oya_id, player_to_id)
+        self.watcher.start()
 
         id_to_score = {
             player_to_id[player]: score
@@ -236,14 +251,34 @@ class Game:
     def main(self):
         state = self.state
 
+        # 监视线程每局由 start_kyoku 拉起（main 在终局调用 stop 回收），此处不再统一启动
+
+        # Claim 阶段消费下一个时序信号：阻塞等 watcher 的 player_change，
+        # 同时自己轮询终局中断（watcher 已不产中断，且此处可能一直等不到
+        # 下一个 player_change——比如这张牌被荣和 / 这局荒牌流局）。
+        # 带超时轮询，否则主线程会卡在 Queue 的 C 级锁里，Ctrl+C 无法生效。
+        def wait_signal():
+            while True:
+                try:
+                    return self.watcher.q.get(timeout=POLLING_INTERVAL)
+                except queue.Empty:
+                    pass
+                # check_interrupt：非中断立即返回 None；已进入中断则阻塞到分辨出结果
+                interrupt = check_interrupt()
+                if interrupt is not None:
+                    return {'type': interrupt}
+
         # check current_player kakan ankan dahai hora
         def check_dahai_phase():
             player = state['current_player']
 
+            # 终局中断检测移回主流程：check_interrupt 一旦确认进入中断动画，
+            # 就阻塞等到分辨出 hora / ryukyoku 再返回，期间不再认牌，
+            # 避免吃碰杠 / 终局动画被误识别成打牌（见 hora.py 注释）。
             interrupt = check_interrupt()
-            if interrupt:
+            if interrupt is not None:
                 return interrupt
-            
+
             meld = check_kan()
             if meld is not None:
                 self.claim(player, meld)
@@ -256,18 +291,7 @@ class Game:
                 return 'dahai'
 
             return None
-        
-        def check_claim_phase():
-            interrupt = check_interrupt()
-            if interrupt:
-                return interrupt
 
-            player = check_player_change()
-            if player is not None:
-                print_with_color(f'切换至玩家 {player}')
-                return player
-            return None
-        
 
         while True:
             player = state['current_player']
@@ -302,13 +326,18 @@ class Game:
                     self.phase = Phase.Tsumo
 
             elif self.phase == Phase.Claim:
-                # player change / hora
-                playerOrInterrupt = polling(check_claim_phase, POLLING_INTERVAL, timeout=30)
-                if playerOrInterrupt == 'hora':
+                # 从队列消费时序信号：active bar 的亮灭转换由后台线程全程
+                # 盯着、转换即入队，不再受识别快慢拖累。
+                msg = wait_signal()
+                if msg['type'] == 'hora':
                     self.phase = Phase.Hora
                     continue
-                else:
-                    player = playerOrInterrupt
+                elif msg['type'] == 'ryukyoku':
+                    self.phase = Phase.Ryukyoku
+                    continue
+
+                player = msg['pid']
+                print_with_color(f'切换至玩家 {player}')
 
                 if self.need_open_dora:
                     self.open_dora()
@@ -317,9 +346,9 @@ class Game:
                     print('reach_accept')
                     self.notify({ 'type': 'reach_accepted', 'actor': self.riichi_to_accepted })
                     self.riichi_to_accepted = None
-                    # time sleep 是为了避免立直时放立直棒的手，挡住已打牌，错判鸣牌。
-                    time.sleep(0.5)
-
+                    # time sleep 是为了避免立直时放立直棒的手等立直动画，挡住已打牌，错判鸣牌。
+                    time.sleep(0.8)
+                    
                 claimed = check_dahai_claimed()
 
                 state['current_player'] = player
@@ -344,10 +373,18 @@ class Game:
                 self.phase = Phase.Tsumo
 
             elif self.phase == Phase.Hora:
+                # TODO 最后一张ron牌难以被识别
                 print_with_color('和了')
+                self.watcher.stop()
+                self.phase = Phase.EndKyoku
+
+            elif self.phase == Phase.Ryukyoku:
+                print_with_color('流局')
+                self.watcher.stop()
                 self.phase = Phase.EndKyoku
 
             elif self.phase == Phase.EndKyoku:
+                self.watcher.stop()
                 self.notify({
                     'type': 'end_kyoku'
                 })
@@ -376,14 +413,15 @@ class Game:
         if self.bot is None:
             return
         
-        if message['type'] == 'start_kyoku':
-            self.bot.start(self.state['my_id'])
-            react = self.bot.react(message)
-        elif message['type'] == 'end_kyoku':
-            react = self.bot.react(message)
-            self.bot.end()
-        else:
-            react = self.bot.react(message)
+        with timed('bot.react(AI)'):
+            if message['type'] == 'start_kyoku':
+                self.bot.start(self.state['my_id'])
+                react = self.bot.react(message)
+            elif message['type'] == 'end_kyoku':
+                react = self.bot.react(message)
+                self.bot.end()
+            else:
+                react = self.bot.react(message)
         if 'error' in react:
             raise RuntimeError('AI React Error', react['error'])
         
@@ -407,21 +445,17 @@ def on_press(key):
 
 listener = keyboard.Listener(on_press=on_press)
 listener.start()
-_state_full_5 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_markers': ['1z'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 0, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 0, 'player_info': [{'kawa_index': 7, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 6, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 6, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 7, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['2z', '2z'], 'tile': '2z'}]}], 'my_id': 2}
-_state_full_4 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 2, 'dora_markers': ['1z'], 'scores': [21000, 23000, 34000, 22000], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 2, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 1, 'player_info': [{'kawa_index': 5, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 6, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 5, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 5, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 2}
-_state_full_3 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_markers': ['5s'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 1, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 5, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 5, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 5, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 5, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
-_state_full_2 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_markers': ['5s'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 0, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 2, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 2, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 2, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 2, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
-_state_full_1 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_markers': ['5s'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 3, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 3, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 3, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 3, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 2, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
-# _state3 = {'honba': '', 'kyotaku': '', 'bakaze': 'E', 'kyoku': 4, 'dora_markers': ['1p'], 'scores': ['11300', '21000', '7', '33700'], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 3, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 0, 'player_info': [{'kawa_index': 13, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 12, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 13, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['2p', '2p'], 'tile': '2p'}, {'type': 'ankan'}]}, {'kawa_index': 14, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['0m', '5m'], 'tile': '5m'}, {'type': 'ankan'}, {'type': 'pon', 'consumed': ['8p', '8p'], 'tile': '8p'}]}], 'my_id': 2}
-# _state2 = {'honba': '', 'kyotaku': '', 'bakaze': 'E', 'kyoku': 4, 'dora_markers': ['1p'], 'scores': ['11300', '21000', '7', '33700'], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 0, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 0, 'player_info': [{'kawa_index': 12, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 11, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 12, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['2p', '2p'], 'tile': '2p'}, {'type': 'ankan'}]}, {'kawa_index': 14, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['0m', '5m'], 'tile': '5m'}, {'type': 'ankan'}, {'type': 'pon', 'consumed': ['8p', '8p'], 'tile': '8p'}]}], 'my_id': 2}
-# _state = {'honba': '', 'kyotaku': '', 'bakaze': 'E', 'kyoku': 4, 'dora_markers': ['1p'], 'scores': ['11300', '21000', '7', '33700'], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 2, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 0, 'player_info': [{'kawa_index': 4, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 4, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 3, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['2p', '2p'], 'tile': '2p'}]}, {'kawa_index': 4, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['0m', '5m'], 'tile': '5m'}]}], 'my_id': 2}
+_state_1 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 2, 'dora_markers': ['4s'], 'scores': [23000, 24500, 24500, 28000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 0, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 1, 'player_info': [{'kawa_index': 7, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 8, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 8, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 8, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
+_state_2 = {'honba': 2, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 2, 'dora_markers': ['1p'], 'scores': [43000, 33900, 19300, 3800], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 2, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 1, 'player_info': [{'kawa_index': 9, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 10, 'riichi_index': None, 'riichi': False, 'melds': [{'type': 'pon', 'consumed': ['1z', '1z'], 'tile': '1z'}]}, {'kawa_index': 10, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 9, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
 if __name__ == "__main__":
+    game = None
     try:
         game = Game()
-        # game.start_with_state(_state_full_5)
-        # game.phase = Phase.Dahai
+        # game.start_with_state(_state_2)
+        # game.phase = Phase.Tsumo
         game.main()
     except Exception as e:
+        game.watcher.save_img_q()
         save_img_q()
         print_with_color('游戏中止，打印中止时的GAME STATE', 'red')
         print(game.state)
@@ -429,3 +463,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print_with_color('游戏中止，打印中止时的GAME STATE', 'red')
         print(game.state)
+    finally:
+        # 无论正常退出、异常还是 Ctrl+C，都回收 watcher 线程
+        if game is not None:
+            game.watcher.stop()

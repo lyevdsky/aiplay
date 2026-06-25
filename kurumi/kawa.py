@@ -44,7 +44,7 @@ def crop_kawa_tile(player, pos, riichi_index = None):
         # return cv2.rotate(screenshot[y:y+h, x:x+w], cv2.ROTATE_90_COUNTERCLOCKWISE)
     return x,y,w,h
 
-def rec_dahai(player, pos, riichi_index):
+def rec_dahai(player, pos, riichi_index, debug=False):
     x,y,w,h = crop_kawa_tile(player, pos, riichi_index)
 
     if player == 'self':
@@ -59,7 +59,7 @@ def rec_dahai(player, pos, riichi_index):
         h = h + 30
 
     img = get_screenshot((x,y,w,h), save=100)
-    result = check_tile(img, player, return_dict=True, debug=True)
+    result = check_tile(img, player, return_dict=True, debug=debug)
     # print(result)
     if result is None:
         return None
@@ -107,10 +107,8 @@ def _check_dahai():
     player_info = gamestate['player_info'][gamestate['current_player']]
 
     result = rec_dahai(player_pos, player_info['kawa_index'], player_info['riichi_index'])
-    # print('check dahai: ', player_pos, result)
     if result is not None:
         tile, tsumogiri, riichi = result
-        print('rec_daihai: ', tile, tsumogiri, riichi)
         return tile, tsumogiri, riichi
 
 check_dahai = stable_func(_check_dahai, debug=False)
@@ -122,17 +120,18 @@ def check_dahai_claimed():
     player_pos = position[gamestate['current_player']]
     player_info = gamestate['player_info'][gamestate['current_player']]
 
-    result = rec_dahai(player_pos, player_info['kawa_index'], player_info['riichi_index'])
-    print('check_dahai_claimed: ', result is None)
+    result = rec_dahai(player_pos, player_info['kawa_index'], player_info['riichi_index'], debug=False)
     return result is None
 
-set_debug_screenshot('./error/yolo_error_4z.jpg')
-res = rec_dahai('next', 6, None)
-print(res)
+# set_debug_screenshot('./error/0060_rec_dahai_L61.jpg')
+# res = rec_dahai('next', 0, None, debug=True)
+# print(res)
 # for i in range(100):
-#     set_debug_screenshot(f'./logs/20260617_165923/000{i}.jpg')
-    # res = rec_dahai('prev', 6, None)
-    # print(res)
+#     # set_debug_screenshot(f'./logs/20260617_165923/000{i}.jpg')
+#     res = rec_dahai('next', 0, None)
+#     print(res)
+#     if res is not None and res[0] == '4z':
+#         save_img_q()
 # print(rec_tsumo())
 # if rec_tsumo() is not None:
 #     res = None

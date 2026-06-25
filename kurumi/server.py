@@ -11,6 +11,7 @@ import uvicorn
 
 from game import Game
 from screenshot import save_img_q
+from logger_setup import save_log
 
 app = FastAPI()
 clients = set()
@@ -38,7 +39,7 @@ async def websocket_endpoint(websocket: WebSocket):
     finally:
         clients.remove(websocket)
 
-
+# TODO 退出，中断game
 @app.post("/game/start")
 def game_start():
     with state_lock:
@@ -77,6 +78,7 @@ def _set_status(new_status, error=None):
 
 def run_one_game():
     """在主线程跑一局，异常被捕获后存图并记录，不向上抛出。"""
+    game = None
     try:
         game = Game(listener=lambda data: send_message(data))
         print('run one game')
@@ -84,6 +86,7 @@ def run_one_game():
     except Exception as e:
         send_message({ type: 'error' })
         try:
+            game.watcher.save_img_q()
             save_img_q()
         except Exception as save_err:
             print(f"[SERVER] 存图失败: {save_err}")
@@ -92,7 +95,12 @@ def run_one_game():
         print(game.state)
         print(f"[SERVER] 游戏异常，已捕获，进程继续运行：{err_text}")
         traceback.print_exc()
+        save_log()
         return err_text
+    finally:
+        # 无论正常结束还是异常中止，都回收本局的 watcher 线程，
+        if game is not None:
+            game.watcher.stop()
     return None
 
 
