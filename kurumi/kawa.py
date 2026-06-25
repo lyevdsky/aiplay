@@ -59,9 +59,6 @@ def rec_dahai(player, pos, riichi_index, debug=False):
         h = h + 30
 
     img = get_screenshot((x,y,w,h), save=100)
-    if debug:
-        cv2.imshow('img' ,img)
-        cv2.waitKey(0)
     result = check_tile(img, player, return_dict=True, debug=debug)
     # print(result)
     if result is None:
@@ -139,3 +136,8 @@ def check_dahai_claimed():
 # if rec_tsumo() is not None:
 #     res = None
 # print(res)
+# for i in range(180):
+#     res = rec_dahai('next', 6, None)
+#     if res != None and res[0] == '4z':
+#         save_img_q()
+#     print(res)
