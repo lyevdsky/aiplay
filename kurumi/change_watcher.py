@@ -68,11 +68,9 @@ class ChangeWatcher:
         self._thread = None
 
     def _loop(self):
+        # 必须要唯一游标，完全同步。否则容易产生各种各样的问题
         while self._running:
-            # 队列尚有未消费信号时暂停取帧（不动游标），等 main 消费完再继续，
-            # 使两个读取者的取帧进度大致同步。
-            # TODO 问题是重启时 在watcher追main的那个过程里，main也在loop check_interrupt. 导致main跳过了可以识别摸牌牌的那几帧
-            # 所以还是要唯一游标，完全同步。
+            # 队列尚有未消费信号时暂停取帧，等 main 消费完再继续，
             if not self.q.empty():
                 time.sleep(POLLING_INTERVAL)
                 continue
