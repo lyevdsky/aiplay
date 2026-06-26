@@ -19,7 +19,8 @@ def is_ryukyoku():
     screenshot = get_screenshot(CONFIRM_REGION, save=5)
     ratio = compute_mask_ratio(screenshot, CONFIRM_BG_HSV)
     ratio2 = compute_mask_ratio(screenshot, CONFIRM_TEXT_HSV)
-    return (ratio + ratio2) > 0.9
+    print(ratio, ratio2)
+    return (ratio + ratio2) > 0.85
 
 def is_interrupt():
     x,y,w,h = DORA_FIRST_REGION
@@ -49,7 +50,7 @@ def check_interrupt():
             return 'ryukyoku'
         time.sleep(0.5)
 
-# set_debug_screenshot('./error/kyuhai.png')
+# set_debug_screenshot('./error/0403_is_ryukyoku_L19.jpg')
 
 # res = is_interrupt()
 # print(res)

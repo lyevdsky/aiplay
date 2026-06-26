@@ -9,7 +9,7 @@ def get_rgb(img, x, y):
     return int(r), int(g), int(b)
 
 # img = cv2.imread("./video/ryukyoku.png")
-img = cv2.imread('./error/kyuhai.png')
+img = cv2.imread('./error/0403_is_ryukyoku_L19.jpg')
 
 
 x, y = 1957, 948
@@ -41,8 +41,11 @@ def show(*_):
     upper = np.array([vals["H_max"], vals["S_max"], vals["V_max"]])
     mask = cv2.inRange(hsv, lower, upper)
     result = cv2.bitwise_and(img, img, mask=mask)
+    
+    cv2.namedWindow('Result', cv2.WINDOW_NORMAL)
+
+    cv2.imshow('Result', result)
     cv2.imshow("Mask", mask)
-    cv2.imshow("Result", result)
     # cv2.imshow("Original", img)
 
     if not _windows_positioned:
