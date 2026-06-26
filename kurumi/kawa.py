@@ -123,13 +123,8 @@ def check_dahai_claimed():
     result = rec_dahai(player_pos, player_info['kawa_index'], player_info['riichi_index'], debug=False)
     return result is None
 
-<<<<<<< HEAD
 # set_debug_screenshot('./error/0060_rec_dahai_L61.jpg')
 # res = rec_dahai('next', 0, None, debug=True)
-=======
-# set_debug_screenshot('./error/yolo_error_4z.jpg')
-# res = rec_dahai('next', 6, None)
->>>>>>> main
 # print(res)
 # for i in range(100):
 #     # set_debug_screenshot(f'./logs/20260617_165923/000{i}.jpg')

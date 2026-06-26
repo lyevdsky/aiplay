@@ -6,7 +6,7 @@ import numpy as np
 import pytesseract
 import asyncio
 import ddddocr
-
+from config import STABLE_COUNT
 # ── 临时性能埋点 ───────────────────────────────────────────────
 # 累加各埋点的总耗时/次数，进程退出（Ctrl-C 也算）时打印。定位完即可删。
 import atexit, collections
@@ -49,7 +49,7 @@ def compute_mask_ratio(img, hsv):
     percentage = pixel_count / total_pixels
     return percentage
 
-def find_contour(img, hsv, min_area = 500, debug = False):
+def find_contour(img, hsv, min_area = 2500, debug = False):
   with timed('find_contour'):
     imghsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     hsvlist = [hsv]
@@ -66,9 +66,9 @@ def find_contour(img, hsv, min_area = 500, debug = False):
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cs = []
     for cnt in contours:
-        area = cv2.contourArea(cnt)
-        # TODO 考虑改为算外接矩形面积
-        if area > 1300:  # 过滤太小的
+        x, y, w, h = cv2.boundingRect(cnt)
+        area = w * h 
+        if area > 2600:  # 过滤太小的
             cs.append(cnt)
 
     if debug:
@@ -212,7 +212,7 @@ def crop_min_rect(image, hsv):
 import functools
 
 # 待函数返回结果稳定后才返回值，用于screenshot分析的相关函数
-def stable_func(func, stable_count=2, debug=False):
+def stable_func(func, stable_count=STABLE_COUNT, debug=False):
     """
     包装函数：连续 stable_count 次调用返回相同结果后才返回该结果，
     否则返回 None。忽略调用参数，所有调用共享状态。

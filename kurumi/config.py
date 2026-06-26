@@ -1,6 +1,6 @@
 IS_DEV = False
 POLLING_INTERVAL = 0.03 if not IS_DEV else 0.05
-
+STABLE_COUNT = 3 if not IS_DEV else 2
 # color
 RED_HSV_1 = [(0, 80, 80), (15, 255, 255)]
 RED_HSV_2 = [(165, 80, 80), (180, 255, 255)]

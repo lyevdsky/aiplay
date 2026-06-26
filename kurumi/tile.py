@@ -47,7 +47,7 @@ def check_5z(img):
     mask2 = cv2.inRange(hsv, SAME_TILE_HIGHLIGHT_HSV[0], SAME_TILE_HIGHLIGHT_HSV[1])
     ratio2 = cv2.countNonZero(mask2) / (w * h)
     if ratio < 0.8 and ratio2 < 0.8:
-        print('误检测为z5', ratio)
+        # print('误检测为z5', ratio)
         save_error_img(img, prefix='z5')
         return False
 
@@ -117,7 +117,7 @@ def normalize_direction(tileimg, player):
     
     return tileimg, direction
 
-def check_tile(img, player = 'self', min_area=1200, threshold=0.8, return_dict = False, autocrop = True, debug=False):
+def check_tile(img, player = 'self', min_area=2600, threshold=0.8, return_dict = False, autocrop = True, debug=False):
     if autocrop:
         # 先找亮白，再尝试模切的灰白。避免找的牌面矩形不对，导致normalize_direction判断有误
         cs = find_contour(img, WHILE_HSV, min_area)
@@ -132,7 +132,7 @@ def check_tile(img, player = 'self', min_area=1200, threshold=0.8, return_dict =
         tileimg = img[y:y+h,x:x+w]
     else:
         tileimg = img
-
+    
     normalized_img, direction = normalize_direction(tileimg, player)
 
     if debug:
@@ -157,7 +157,7 @@ def check_tile(img, player = 'self', min_area=1200, threshold=0.8, return_dict =
 
     return tile
 
-def check_tiles(img, player = 'self', min_area=1200, threshold=0.8, debug=False):
+def check_tiles(img, player = 'self', min_area=2600, threshold=0.8, debug=False):
     cs = find_contour(img, WHILE_HSV, min_area, debug=debug)
     cs2 = find_contour(img, SAME_TILE_HIGHLIGHT_HSV, min_area, debug=debug)
 
