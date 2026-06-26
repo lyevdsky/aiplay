@@ -348,6 +348,7 @@ class Game:
                     self.riichi_to_accepted = None
                     # time sleep 是为了避免立直时放立直棒的手等立直动画，挡住已打牌，错判鸣牌。
                     time.sleep(0.8)
+                    # TODO: 显而，如果是自己已经立直搭配上家立直，触发0.8s延迟，自己的摸牌毫无疑问会来不及识别。
                     
                 claimed = check_dahai_claimed()
 

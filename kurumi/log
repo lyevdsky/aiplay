@@ -1,0 +1,158 @@
+ 
+^^^^^^^^^^- mjai -^^^^^^^^^^
+{"type": "start_kyoku", "bakaze": "E", "kyoku": 3, "honba": 0, "kyotaku": 0, "dora_marker": "9m", "oya": 2, "scores": [23000, 25000, 23700, 28300], "tehais": [["?", "?", "?", "?", "?", "?", "?", "?", "?", "?", "?", "?", "?"], ["?", "?", "?", "?", "?", "?", "?", "?", "?", "?", "?", "?", "?"], ["?", "?", "?", "?", "?", "?", "?", "?", "?", "?", "?", "?", "?"], ["3m", "8m", "4p", "8p", "8p", "1s", "1s", "4s", "9s", "2z", "5z", "6z", "7z"]]}
+{"type": "tsumo", "actor": 2, "pai": "?"}
+{"type": "dahai", "actor": 2, "pai": "5m", "tsumogiri": false}
+{"type": "tsumo", "actor": 3, "pai": "4s"}
+{"type": "dahai", "actor": 3, "pai": "9s", "tsumogiri": false}
+{"type": "tsumo", "actor": 0, "pai": "?"}
+{"type": "dahai", "actor": 0, "pai": "9m", "tsumogiri": false}
+{"type": "tsumo", "actor": 1, "pai": "?"}
+{"type": "dahai", "actor": 1, "pai": "1m", "tsumogiri": false}
+{"type": "tsumo", "actor": 2, "pai": "?"}
+{"type": "dahai", "actor": 2, "pai": "1z", "tsumogiri": false}
+{"type": "tsumo", "actor": 3, "pai": "6m"}
+{"type": "dahai", "actor": 3, "pai": "5z", "tsumogiri": false}
+{"type": "tsumo", "actor": 0, "pai": "?"}
+{"type": "dahai", "actor": 0, "pai": "3z", "tsumogiri": false}
+{"type": "tsumo", "actor": 1, "pai": "?"}
+{"type": "dahai", "actor": 1, "pai": "2z", "tsumogiri": false}
+{"type": "tsumo", "actor": 2, "pai": "?"}
+{"type": "dahai", "actor": 2, "pai": "4z", "tsumogiri": false}
+{"type": "tsumo", "actor": 3, "pai": "4m"}
+{"type": "dahai", "actor": 3, "pai": "6z", "tsumogiri": false}
+{"type": "tsumo", "actor": 0, "pai": "?"}
+{"type": "dahai", "actor": 0, "pai": "9s", "tsumogiri": false}
+{"type": "tsumo", "actor": 1, "pai": "?"}
+{"type": "dahai", "actor": 1, "pai": "6z", "tsumogiri": false}
+{"type": "tsumo", "actor": 2, "pai": "?"}
+{"type": "dahai", "actor": 2, "pai": "4m", "tsumogiri": false}
+{"type": "tsumo", "actor": 3, "pai": "4s"}
+{"type": "dahai", "actor": 3, "pai": "7z", "tsumogiri": false}
+{"type": "tsumo", "actor": 0, "pai": "?"}
+{"type": "dahai", "actor": 0, "pai": "4z", "tsumogiri": false}
+{"type": "tsumo", "actor": 1, "pai": "?"}
+{"type": "dahai", "actor": 1, "pai": "9p", "tsumogiri": false}
+{"type": "tsumo", "actor": 2, "pai": "?"}
+{"type": "dahai", "actor": 2, "pai": "9m", "tsumogiri": false}
+{"type": "tsumo", "actor": 3, "pai": "1p"}
+{"type": "dahai", "actor": 3, "pai": "1p", "tsumogiri": true}
+{"type": "tsumo", "actor": 0, "pai": "?"}
+{"type": "dahai", "actor": 0, "pai": "8p", "tsumogiri": false}
+{"type": "tsumo", "actor": 1, "pai": "?"}
+{"type": "dahai", "actor": 1, "pai": "5m", "tsumogiri": false}
+{"type": "tsumo", "actor": 2, "pai": "?"}
+{"type": "dahai", "actor": 2, "pai": "4m", "tsumogiri": true}
+{"type": "tsumo", "actor": 3, "pai": "1p"}
+{"type": "dahai", "actor": 3, "pai": "1p", "tsumogiri": true}
+{"type": "tsumo", "actor": 0, "pai": "?"}
+{"type": "dahai", "actor": 0, "pai": "1z", "tsumogiri": true}
+{"type": "tsumo", "actor": 1, "pai": "?"}
+{"type": "dahai", "actor": 1, "pai": "7m", "tsumogiri": false}
+{"type": "tsumo", "actor": 2, "pai": "?"}
+{"type": "dahai", "actor": 2, "pai": "9m", "tsumogiri": false}
+{"type": "tsumo", "actor": 3, "pai": "6z"}
+{"type": "dahai", "actor": 3, "pai": "6z", "tsumogiri": true}
+{"type": "tsumo", "actor": 0, "pai": "?"}
+{"type": "dahai", "actor": 0, "pai": "3m", "tsumogiri": true}
+{"type": "tsumo", "actor": 1, "pai": "?"}
+{"type": "dahai", "actor": 1, "pai": "7m", "tsumogiri": true}
+{"type": "tsumo", "actor": 2, "pai": "?"}
+{"type": "dahai", "actor": 2, "pai": "3z", "tsumogiri": true}
+{"type": "tsumo", "actor": 3, "pai": "9p"}
+{"type": "dahai", "actor": 3, "pai": "8p", "tsumogiri": false}
+{"type": "tsumo", "actor": 0, "pai": "?"}
+{"type": "dahai", "actor": 0, "pai": "3s", "tsumogiri": false}
+{"type": "tsumo", "actor": 1, "pai": "?"}
+{"type": "dahai", "actor": 1, "pai": "1m", "tsumogiri": true}
+{"type": "tsumo", "actor": 2, "pai": "?"}
+{"type": "dahai", "actor": 2, "pai": "2s", "tsumogiri": false}
+{"type": "tsumo", "actor": 3, "pai": "5z"}
+{"type": "dahai", "actor": 3, "pai": "8p", "tsumogiri": false}
+{"type": "tsumo", "actor": 0, "pai": "?"}
+{"type": "dahai", "actor": 0, "pai": "0p", "tsumogiri": false}
+{"type": "tsumo", "actor": 1, "pai": "?"}
+{"type": "dahai", "actor": 1, "pai": "5p", "tsumogiri": false}
+{"type": "tsumo", "actor": 2, "pai": "?"}
+{"type": "dahai", "actor": 2, "pai": "7p", "tsumogiri": false}
+{"type": "tsumo", "actor": 3, "pai": "2m"}
+{"type": "dahai", "actor": 3, "pai": "2z", "tsumogiri": false}
+{"type": "tsumo", "actor": 0, "pai": "?"}
+{"type": "dahai", "actor": 0, "pai": "4z", "tsumogiri": true}
+{"type": "tsumo", "actor": 1, "pai": "?"}
+{"type": "dahai", "actor": 1, "pai": "9p", "tsumogiri": false}
+{"type": "tsumo", "actor": 2, "pai": "?"}
+{"type": "dahai", "actor": 2, "pai": "6z", "tsumogiri": true}
+{"type": "tsumo", "actor": 3, "pai": "6s"}
+{"type": "dahai", "actor": 3, "pai": "9p", "tsumogiri": false}
+{"type": "tsumo", "actor": 0, "pai": "?"}
+{"type": "dahai", "actor": 0, "pai": "5p", "tsumogiri": false}
+{"type": "tsumo", "actor": 1, "pai": "?"}
+{"type": "dahai", "actor": 1, "pai": "3m", "tsumogiri": true}
+{"type": "tsumo", "actor": 2, "pai": "?"}
+{"type": "dahai", "actor": 2, "pai": "5z", "tsumogiri": true}
+{"type": "tsumo", "actor": 3, "pai": "3s"}
+{"type": "dahai", "actor": 3, "pai": "5z", "tsumogiri": false}
+{"type": "tsumo", "actor": 0, "pai": "?"}
+{"type": "dahai", "actor": 0, "pai": "6p", "tsumogiri": false}
+{"type": "tsumo", "actor": 1, "pai": "?"}
+{"type": "dahai", "actor": 1, "pai": "3s", "tsumogiri": false}
+{"type": "tsumo", "actor": 2, "pai": "?"}
+{"type": "dahai", "actor": 2, "pai": "6m", "tsumogiri": true}
+{"type": "tsumo", "actor": 3, "pai": "0m"}
+{"type": "dahai", "actor": 3, "pai": "3s", "tsumogiri": false}
+{"type": "tsumo", "actor": 0, "pai": "?"}
+{"type": "dahai", "actor": 0, "pai": "2z", "tsumogiri": true}
+{"type": "tsumo", "actor": 1, "pai": "?"}
+{"type": "dahai", "actor": 1, "pai": "4z", "tsumogiri": false}
+{"type": "tsumo", "actor": 2, "pai": "?"}
+{"type": "dahai", "actor": 2, "pai": "1s", "tsumogiri": false}
+{"type": "tsumo", "actor": 3, "pai": "2p"}
+{"type": "dahai", "actor": 3, "pai": "6s", "tsumogiri": false}
+{"type": "tsumo", "actor": 0, "pai": "?"}
+{"type": "dahai", "actor": 0, "pai": "7s", "tsumogiri": false}
+{"type": "tsumo", "actor": 1, "pai": "?"}
+{"type": "dahai", "actor": 1, "pai": "5s", "tsumogiri": false}
+{"type": "tsumo", "actor": 2, "pai": "?"}
+{"type": "dahai", "actor": 2, "pai": "2m", "tsumogiri": true}
+{"type": "tsumo", "actor": 3, "pai": "5s"}
+{"type": "dahai", "actor": 3, "pai": "5s", "tsumogiri": true}
+{"type": "tsumo", "actor": 0, "pai": "?"}
+{"type": "dahai", "actor": 0, "pai": "7z", "tsumogiri": false}
+{"type": "tsumo", "actor": 1, "pai": "?"}
+{"type": "dahai", "actor": 1, "pai": "9s", "tsumogiri": false}
+{"type": "tsumo", "actor": 2, "pai": "?"}
+{"type": "dahai", "actor": 2, "pai": "8s", "tsumogiri": false}
+{"type": "tsumo", "actor": 3, "pai": "1m"}
+{"type": "reach", "actor": 3}
+{"type": "dahai", "actor": 3, "pai": "8m", "tsumogiri": false}
+{"type": "reach_accepted", "actor": 3}
+{"type": "tsumo", "actor": 0, "pai": "?"}
+{"type": "dahai", "actor": 0, "pai": "8m", "tsumogiri": false}
+{"type": "tsumo", "actor": 1, "pai": "?"}
+{"type": "dahai", "actor": 1, "pai": "9s", "tsumogiri": false}
+{"type": "tsumo", "actor": 2, "pai": "?"}
+{"type": "dahai", "actor": 2, "pai": "2s", "tsumogiri": false}
+{"type": "tsumo", "actor": 3, "pai": "5p"}
+{"type": "dahai", "actor": 3, "pai": "5p", "tsumogiri": true}
+{"type": "tsumo", "actor": 0, "pai": "?"}
+{"type": "dahai", "actor": 0, "pai": "6p", "tsumogiri": true}
+{"type": "tsumo", "actor": 1, "pai": "?"}
+{"type": "dahai", "actor": 1, "pai": "3z", "tsumogiri": true}
+{"type": "tsumo", "actor": 2, "pai": "?"}
+{"type": "dahai", "actor": 2, "pai": "1s", "tsumogiri": false}
+{"type": "tsumo", "actor": 3, "pai": "9p"}
+{"type": "dahai", "actor": 3, "pai": "9p", "tsumogiri": true}
+{"type": "end_kyoku"}
+TODO d3-0
+===== 耗时埋点（按总耗时降序） =====
+get_screenshot(总)          110.81s  x3712       29.9 ms/次
+video_advance               36.19s  x3712        9.7 ms/次
+get_raw_frame(watcher)      27.97s  x4360        6.4 ms/次
+rec_dahai                   25.98s  x789        32.9 ms/次
+rec_new_meld                24.08s  x720        33.4 ms/次
+bot.react(AI)                1.09s  x144         7.6 ms/次
+get_active_player            0.81s  x4360        0.2 ms/次
+find_contour                 0.75s  x5089        0.1 ms/次
+ocr_digits                   0.06s  x6           9.7 ms/次
+has_template                 0.00s  x7           0.5 ms/次

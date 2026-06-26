@@ -1,6 +1,6 @@
 import time
 import cv2
-from util import has_template, ocr_digits, find_contour, stable_func, polling
+from util import has_template, ocr_digits, find_contour, stable_func, polling, timed
 from screenshot import get_screenshot, save_img_q, set_debug_screenshot
 from gamestate import get_gamestate
 from config import *
@@ -115,6 +115,7 @@ def rec_kyoku_info():
     return kyoku_info
 
 def get_active_player(shot=None):
+  with timed('get_active_player'):
     regions = {
         'self': ACTIVE_SELF_REGION,
         'next': ACTIVE_NEXT_REGION,

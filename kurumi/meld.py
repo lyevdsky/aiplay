@@ -5,7 +5,7 @@ import numpy as np
 from gamestate import get_gamestate, set_gamestate
 from screenshot import get_screenshot, set_debug_screenshot
 from tile import check_tiles
-from util import stable_func
+from util import stable_func, timed
 from config import TILE_WHILE_HSV, WHILE_HSV
 
 SELF_POINTS = [(2370, 1320), (2276, 1320)]
@@ -121,6 +121,7 @@ def rec_kakan():
 # 加杠另外单独识别
 # 识别当前玩家是否有新副露
 def rec_new_meld():
+  with timed('rec_new_meld'):
     player, melds = get_current_player_info()
     # melds = [{ 'type': 'chi'}, { 'type': 'pon' }, { 'type': 'chi' }]
     # melds = [{ 'type': 'pon'}, { 'type': 'ankan' }, {'type': 'pon'}]
@@ -143,7 +144,7 @@ def rec_new_meld():
             x1,y1,w1,h1 = result[0]['region']
             x2,y2,w2,h2 = result[1]['region']
             # 如果是自己，两种牌必须相邻，避免检测到自己手牌和摸牌两种相同的牌就认为是ankan
-            if (player == 'self' and (abs(x1 + w1 - x2) > 10 or abs(x2 + w2 - x1) > 10)):
+            if (player == 'self' and abs(x1 + w1 - x2) > 10 and abs(x2 + w2 - x1) > 10):
                 return None
         
             meld = {
@@ -186,9 +187,9 @@ def rec_new_meld():
 #     set_debug_screenshot(f'./logs/20260615_133324/000{i}.jpg')
 #     rec_new_meld()
 
-# set_debug_screenshot('./error/0004_rec_new_meld_L131.jpg')
-# # # # set_debug_screenshot('./logs/20260617_154527/0009.jpg')
-# set_gamestate({'honba': 1, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_markers': ['8s'], 'scores': [43000, 25000, 25000, 7000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 1, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 13, 'riichi_index': None, 'melds': [{'type': 'chi', 'consumed': ['4p', '2p'], 'tile': '3p'}], 'riichi': False}, {'kawa_index': 14, 'riichi_index': None, 'riichi': False, 'melds': [{'type': 'chi', 'consumed': ['4p', '5p'], 'tile': '6p'}]}, {'kawa_index': 14, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['5s', '0s'], 'tile': '5s'}]}, {'kawa_index': 13, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'chi', 'consumed': ['6s', '5s'], 'tile': '4s'}]}], 'my_id': 0})
+# set_debug_screenshot('./error/0000_rec_new_meld_L131.jpg')
+# # # # # set_debug_screenshot('./logs/20260617_154527/0009.jpg')
+# set_gamestate({'honba': 2, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 2, 'dora_markers': ['7z'], 'scores': [25000, 48000, 2000, 25000], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 2, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 1, 'player_info': [{'kawa_index': 11, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 12, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 11, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 11, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 2})
 # res = rec_new_meld()
 # print(res)
 

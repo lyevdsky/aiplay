@@ -5,7 +5,7 @@ import numpy as np
 import math
 from gamestate import get_gamestate
 from screenshot import get_screenshot, save_img_q, set_debug_screenshot
-from util import concat_images_horizontal, find_contour, stable_func
+from util import concat_images_horizontal, find_contour, stable_func, timed
 from config import *
 from tile import check_tile
 from hand import rec_tsumo
@@ -45,6 +45,7 @@ def crop_kawa_tile(player, pos, riichi_index = None):
     return x,y,w,h
 
 def rec_dahai(player, pos, riichi_index, debug=False):
+  with timed('rec_dahai'):
     x,y,w,h = crop_kawa_tile(player, pos, riichi_index)
 
     if player == 'self':
