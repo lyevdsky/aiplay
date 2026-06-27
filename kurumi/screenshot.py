@@ -89,7 +89,9 @@ def _read_source():
     if _debug_screenshot is not None:
         return _debug_screenshot
     if not IS_DEV and not _replay_files:
-        return camera.get_latest_frame()
+        with timed('get_latest_frame'):
+            frame = camera.get_latest_frame()
+        return frame
     if _replay_files:
         return cv2.imread(_replay_files[_cursor]) if _cursor < len(_replay_files) else None
     return _current_frame
@@ -97,14 +99,14 @@ def _read_source():
 def get_screenshot(region = None, save = 0):
   with timed('get_screenshot(总)'):
     shot = _read_source()
-    advance_cursor()   # main 侧每取一帧推进游标，watcher 读到的"当前帧"随之前进
-
+    if IS_DEV:
+        advance_cursor()   # main 侧每取一帧推进游标，watcher 读到的"当前帧"随之前进
     frame = sys._getframe(1)
     caller_info = f"{frame.f_code.co_name}_L{frame.f_lineno}"
     # 入队时即编码成 JPEG，大幅降低内存占用
-    ok, buf = cv2.imencode(".jpg", shot, [cv2.IMWRITE_JPEG_QUALITY, JPEG_QUALITY])
-    if ok:
-        img_q.append((buf, caller_info))
+    # ok, buf = cv2.imencode(".jpg", shot, [cv2.IMWRITE_JPEG_QUALITY, JPEG_QUALITY])
+    # if ok:
+    img_q.append((shot, caller_info))
 
     if save:
         # 记录当前 img_q 中最近 save 张的快照，同一调用点会覆盖旧快照
@@ -149,7 +151,8 @@ def save_img_q(path = None):
     for img, caller_info in items:
         # 生成文件名，例如 0001_funcname_L42.jpg
         filename = os.path.join(folder_name, f"{idx:04d}_{caller_info}.jpg")
-        img.tofile(filename)
+        # img.tofile(filename)
+        cv2.imwrite(filename, img)
         idx += 1
 
     print(f"共保存 {idx} 张图片到文件夹 {folder_name}")
@@ -160,7 +163,8 @@ def save_img_q(path = None):
         os.makedirs(sub_folder, exist_ok=True)
         for i, (img, caller_info) in enumerate(shots):
             filename = os.path.join(sub_folder, f"{i:04d}_{caller_info}.jpg")
-            img.tofile(filename)
+            cv2.imwrite(filename, img)
+            # img.tofile(filename)
         print(f"快照保存 {len(shots)} 张图片到文件夹 {sub_folder}")
 
     saved_snapshots.clear()

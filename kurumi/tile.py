@@ -2,7 +2,7 @@ import os
 import cv2
 import numpy as np
 from config import TILE_WHILE_HSV, WHILE_HSV, IS_DEV, SAME_TILE_HIGHLIGHT_HSV
-from util import find_contour
+from util import find_contour, timed
 from ultralytics import YOLO
 
 MOCK = False
@@ -118,6 +118,7 @@ def normalize_direction(tileimg, player):
     return tileimg, direction
 
 def check_tile(img, player = 'self', min_area=2600, threshold=0.8, return_dict = False, autocrop = True, debug=False):
+  with timed('check_tile'):
     if autocrop:
         # 先找亮白，再尝试模切的灰白。避免找的牌面矩形不对，导致normalize_direction判断有误
         cs = find_contour(img, WHILE_HSV, min_area)

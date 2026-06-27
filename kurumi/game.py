@@ -187,7 +187,7 @@ class Game:
             })
         elif type == 'daiminkan':
             num, suit = self.last_dahai
-            if num == '5':
+            if num == '5' and self.last_dahai != '5z':
                 consumed = [self.last_dahai] * 2 + ['0' + suit]
             elif num == '0':
                 consumed = ['5' + suit] * 3
@@ -206,7 +206,7 @@ class Game:
         elif type == 'ankan':
             tile = meld['tile']
             num, suit = tile
-            if num == '5':
+            if num == '5' and tile != '5z':
                 consumed = [tile] * 3 + ['0' + suit]
             else:
                 consumed = [tile] * 4
@@ -221,7 +221,7 @@ class Game:
             # 注意 加杠返回的是之前碰的副露内容，
             consumed = [meld['tile'], *meld['consumed']]
             num, suit = meld['tile']
-            if num == '5':
+            if num == '5' and suit != 'z':
                 if consumed[1][0] == '5' and consumed[2][0] == '5':
                     pai = '0' + suit
                 else:

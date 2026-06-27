@@ -16,6 +16,7 @@ def rec_hand():
     imgs = []
     for i in range(13):
         offset = i * w
+        # TODO: y + 
         tile_img = img[y:y + h,x + offset:x + offset + w]
         tile = check_tile(tile_img, autocrop = False, debug=False)
         if tile is None:

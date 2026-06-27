@@ -19,7 +19,6 @@ def is_ryukyoku():
     screenshot = get_screenshot(CONFIRM_REGION, save=5)
     ratio = compute_mask_ratio(screenshot, CONFIRM_BG_HSV)
     ratio2 = compute_mask_ratio(screenshot, CONFIRM_TEXT_HSV)
-    print(ratio, ratio2)
     return (ratio + ratio2) > 0.85
 
 def is_interrupt():

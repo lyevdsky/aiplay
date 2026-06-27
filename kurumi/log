@@ -156,3 +156,32 @@ get_active_player            0.81s  x4360        0.2 ms/次
 find_contour                 0.75s  x5089        0.1 ms/次
 ocr_digits                   0.06s  x6           9.7 ms/次
 has_template                 0.00s  x7           0.5 ms/次
+
+删除video_advance
+===== 耗时埋点（按总耗时降序） =====
+get_screenshot(总)           93.49s  x4928       19.0 ms/次
+get_latest_frame            73.12s  x9092        8.0 ms/次
+screenshot_imencode         57.44s  x4928       11.7 ms/次
+get_raw_frame(watcher)      37.26s  x4164        8.9 ms/次
+rec_dahai                   22.55s  x1018       22.1 ms/次
+rec_new_meld                20.78s  x949        21.9 ms/次
+check_tile                   3.61s  x1142        3.2 ms/次
+bot.react(AI)                1.04s  x144         7.2 ms/次
+find_contour                 0.97s  x6765        0.1 ms/次
+get_active_player            0.43s  x4164        0.1 ms/次
+ocr_digits                   0.06s  x6          10.1 ms/次
+has_template                 0.00s  x7           0.7 ms/次
+
+删除imencode
+===== 耗时埋点（按总耗时降序） =====
+get_latest_frame           113.68s  x9840       11.6 ms/次
+get_screenshot(总)           77.11s  x5852       13.2 ms/次
+get_raw_frame(watcher)      41.08s  x3988       10.3 ms/次
+rec_new_meld                24.71s  x1141       21.7 ms/次
+rec_dahai                   21.63s  x1210       17.9 ms/次
+check_tile                   4.04s  x1326        3.0 ms/次
+bot.react(AI)                1.10s  x144         7.6 ms/次
+find_contour                 1.09s  x8032        0.1 ms/次
+get_active_player            0.43s  x3988        0.1 ms/次
+ocr_digits                   0.06s  x6          10.1 ms/次
+has_template                 0.00s  x7           0.5 ms/次
