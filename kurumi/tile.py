@@ -1,9 +1,16 @@
+from enum import Enum
 import os
 import cv2
 import numpy as np
 from config import TILE_WHILE_HSV, WHILE_HSV, IS_DEV, SAME_TILE_HIGHLIGHT_HSV
 from util import find_contour, timed
 from ultralytics import YOLO
+
+class TileType(Enum):
+    Hand = 'hand'
+    Kawa = 'kawa'
+    Meld = 'meld'
+    Dora = 'dora'
 
 MOCK = False
 
@@ -84,57 +91,158 @@ def predict_tile(img, threshold = 0.8, debug=False):
     
     return None
 
-# 图片转向成正的纵向
-def normalize_direction(tileimg, player):
+TILE_SHAPE_RULE = {
+    'self': {
+        'hand': {
+            'area': (21000, 23000),
+            'wh_ratio': (0.7, 0.8)
+        },
+        'kawa': {
+            'area': (5000, 7000),
+            'wh_ratio': (0.9, 1.2),
+            'rotated_wh_ratio': (1.8, 2.3),
+        },
+        'meld': {
+            'area': (7000, 10000),
+            'wh_ratio': (0.9,1.6),
+            'rotated_wh_ratio': (1.7, 2.0),
+        },
+        'dora': {
+            'area': (4000, 6000),
+            'wh_ratio': (0.7, 0.8)
+        }
+    },
+    'next': {
+        'kawa': {
+            'area': (3500, 5500),
+            'rotated_wh_ratio': (1.0, 1.4),
+            'wh_ratio': (1.8, 2.5)
+        },
+        'meld': {
+            'area': (3000, 5500), # (3000, ?)
+            'rotated_wh_ratio': (1.2, 1.8),
+            'wh_ratio': (1.2, 2.5) #(?, 2.5)
+        }
+    },
+    'across':{
+        'kawa': {
+            'area': (4000, 6000),
+            'wh_ratio': (1.2, 1.45),
+            'rotated_wh_ratio': (1.8, 2.5),
+        },
+        'meld': {
+            'area': (2600,4500), #(2600, ?)
+            'wh_ratio': (1.2, 1.6),
+            'rotated_wh_ratio': (1.8, 2.5),
+        }
+    },
+    'prev': {
+        'kawa': {
+            'area': (3500, 5500),
+            'rotated_wh_ratio': (1.0, 1.4),
+            'wh_ratio': (1.8, 2.5)
+        },
+        'meld': {
+            'area': (5000, 9500),
+            'wh_ratio': (1.8, 2.5),
+            'rotated_wh_ratio': (1.0, 1.4),
+        }
+    },
+}
+def get_shape_rule(player, type):
+    key = type.value if isinstance(type, TileType) else type
+    return TILE_SHAPE_RULE.get(player, {}).get(key)
+
+
+# 根据 player/type 从规则表取最小面积，作为轮廓检测的 min_area
+def get_min_area(player, type):
+    rule = get_shape_rule(player, type)
+    return rule['area'][0] if rule else 0
+
+
+def validate_tileimg(tileimg, player, type):
     h, w = tileimg.shape[:2]
 
+    rule = get_shape_rule(player, type)
+    if rule is None:
+        return False
+
+    area = h * w
+    area_min, area_max = rule['area']
+    if not (area_min <= area <= area_max):
+        return False
+
+    ratio = w / h
+    for key in ('wh_ratio', 'rotated_wh_ratio'):
+        if key in rule:
+            lo, hi = rule[key]
+            if lo <= ratio <= hi:
+                return True
+
+    return False
+
+
+# w/h 是否落在该 player/type 的 rotated_wh_ratio 区间内（即牌被横置/旋转）
+def is_rotated_ratio(player, type, ratio):
+    rule = get_shape_rule(player, type)
+    if not rule or 'rotated_wh_ratio' not in rule:
+        return False
+    lo, hi = rule['rotated_wh_ratio']
+    return lo <= ratio <= hi
+
+# 图片转向成正的纵向
+def normalize_direction(tileimg, player, type=TileType.Kawa):
+    h, w = tileimg.shape[:2]
+    rotated = is_rotated_ratio(player, type, w / h)
+
     if player == 'self':
-        if w / h > 1.5:
+        if rotated:
             tileimg = cv2.rotate(tileimg, cv2.ROTATE_90_CLOCKWISE)
             direction = 'next'
         else:
             direction = 'self'
     elif player == 'next':
-        if w / h < 1.8:
+        if rotated:
             tileimg = cv2.rotate(tileimg, cv2.ROTATE_180)
             direction = 'across'
         else:
             direction = 'next'
             tileimg = cv2.rotate(tileimg, cv2.ROTATE_90_CLOCKWISE)
     elif player == 'across':
-        if w / h > 1.5:
+        if rotated:
             tileimg = cv2.rotate(tileimg, cv2.ROTATE_90_COUNTERCLOCKWISE)
             direction = 'prev'
         else:
             direction = 'across'
             tileimg = cv2.rotate(tileimg, cv2.ROTATE_180)
     else:
-        if w / h < 1.5:
+        if rotated:
             direction = 'self'
         else:
             direction = 'prev'
             tileimg = cv2.rotate(tileimg, cv2.ROTATE_90_COUNTERCLOCKWISE)
-    
+
     return tileimg, direction
 
-def check_tile(img, player = 'self', min_area=2600, threshold=0.8, return_dict = False, autocrop = True, debug=False):
+def check_tile(img, player = 'self', type=TileType.Kawa, threshold=0.8, return_dict = False, autocrop = True, debug=False):
   with timed('check_tile'):
+    min_area = get_min_area(player, type)
     if autocrop:
         # 先找亮白，再尝试模切的灰白。避免找的牌面矩形不对，导致normalize_direction判断有误
         cs = find_contour(img, WHILE_HSV, min_area)
-        if len(cs) == 0:
+        if len(cs) == 0 and type == TileType.Kawa:
             cs = find_contour(img, TILE_WHILE_HSV, min_area)
-            if len(cs) == 0:
-                cs = find_contour(img, SAME_TILE_HIGHLIGHT_HSV, min_area)
-                if len(cs) == 0:
-                    return None
+        if len(cs) == 0 and type != TileType.Hand:
+            cs = find_contour(img, SAME_TILE_HIGHLIGHT_HSV, min_area)
+        if len(cs) == 0:
+            return None
 
         x,y,w,h = cv2.boundingRect(cs[0])
         tileimg = img[y:y+h,x:x+w]
     else:
         tileimg = img
-    
-    normalized_img, direction = normalize_direction(tileimg, player)
+    validate_tileimg(tileimg, player, type)
+    normalized_img, direction = normalize_direction(tileimg, player, type)
 
     if debug:
         cv2.imshow('check_tile', normalized_img)
@@ -158,7 +266,8 @@ def check_tile(img, player = 'self', min_area=2600, threshold=0.8, return_dict =
 
     return tile
 
-def check_tiles(img, player = 'self', min_area=2600, threshold=0.8, debug=False):
+def check_tiles(img, player = 'self', type=TileType.Meld, threshold=0.8, debug=False):
+    min_area = get_min_area(player, type)
     cs = find_contour(img, WHILE_HSV, min_area, debug=debug)
     cs2 = find_contour(img, SAME_TILE_HIGHLIGHT_HSV, min_area, debug=debug)
 
@@ -166,7 +275,7 @@ def check_tiles(img, player = 'self', min_area=2600, threshold=0.8, debug=False)
     for c in (cs + cs2):
         x,y,w,h = cv2.boundingRect(c)
         tileimg = img[y:y+h,x:x+w]
-        normalized_img, direction = normalize_direction(tileimg, player)
+        normalized_img, direction = normalize_direction(tileimg, player, type)
 
         if debug:
             print(f'width: {w}, height: {h}')

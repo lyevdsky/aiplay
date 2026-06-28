@@ -4,7 +4,7 @@ from util import has_template, ocr_digits, find_contour, stable_func, polling, t
 from screenshot import get_screenshot, save_img_q, set_debug_screenshot
 from gamestate import get_gamestate
 from config import *
-from tile import check_tile
+from tile import check_tile, TileType
 from hand import rec_hand
 
 def get_honba(screenshot):
@@ -78,7 +78,7 @@ def get_dora_marker(screenshot, index = 0):
     x,y,w,h = DORA_FIRST_REGION
     x = x + index * w
     doraimg = screenshot[y:y+h,x:x+w]
-    tile = check_tile(doraimg)
+    tile = check_tile(doraimg, type=TileType.Dora)
     return tile
 
 def get_scores(screenshot):
