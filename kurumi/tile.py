@@ -126,7 +126,7 @@ TILE_SHAPE_RULE = {
     },
     'across':{
         'kawa': {
-            'area': (4000, 6000),
+            'area': (3800, 6000),
             'wh_ratio': (1.2, 1.45),
             'rotated_wh_ratio': (1.8, 2.5),
         },
@@ -231,7 +231,7 @@ def check_tile(img, player = 'self', type=TileType.Kawa, threshold=0.8, return_d
         # 先找亮白，再尝试模切的灰白。避免找的牌面矩形不对，导致normalize_direction判断有误
         cs = find_contour(img, WHILE_HSV, min_area)
         if len(cs) == 0 and type == TileType.Kawa:
-            cs = find_contour(img, TILE_WHILE_HSV, min_area)
+            cs = find_contour(img, TILE_WHILE_HSV, min_area, debug=debug)
         if len(cs) == 0 and type != TileType.Hand:
             cs = find_contour(img, SAME_TILE_HIGHLIGHT_HSV, min_area)
         if len(cs) == 0:

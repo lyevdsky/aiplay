@@ -131,7 +131,7 @@ def rec_new_meld():
     img = get_screenshot((x,y,w,h), save=5)
     # cv2.imshow('img', img)
     # cv2.waitKey()
-    result = check_tiles(img, player, debug=True)
+    result = check_tiles(img, player, debug=False)
     # print(result)
     meld = None
     if len(result) == 2:
