@@ -94,7 +94,7 @@ def predict_tile(img, threshold = 0.8, debug=False):
 TILE_SHAPE_RULE = {
     'self': {
         'hand': {
-            'area': (21000, 23000),
+            'area': (20000, 23000),
             'wh_ratio': (0.7, 0.8)
         },
         'kawa': {
@@ -243,6 +243,7 @@ def check_tile(img, player = 'self', type=TileType.Kawa, threshold=0.8, return_d
         tileimg = img
 
     valid = validate_tileimg(tileimg, player, type)
+    # print('valid: ', valid)
     if not valid:
         return None
 
