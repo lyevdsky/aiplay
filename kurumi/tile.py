@@ -241,7 +241,11 @@ def check_tile(img, player = 'self', type=TileType.Kawa, threshold=0.8, return_d
         tileimg = img[y:y+h,x:x+w]
     else:
         tileimg = img
-    validate_tileimg(tileimg, player, type)
+
+    valid = validate_tileimg(tileimg, player, type)
+    if not valid:
+        return None
+
     normalized_img, direction = normalize_direction(tileimg, player, type)
 
     if debug:
@@ -275,6 +279,11 @@ def check_tiles(img, player = 'self', type=TileType.Meld, threshold=0.8, debug=F
     for c in (cs + cs2):
         x,y,w,h = cv2.boundingRect(c)
         tileimg = img[y:y+h,x:x+w]
+
+        valid = validate_tileimg(tileimg, player, type)
+        if not valid:
+            continue
+
         normalized_img, direction = normalize_direction(tileimg, player, type)
 
         if debug:
