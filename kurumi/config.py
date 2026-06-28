@@ -1,4 +1,4 @@
-IS_DEV = True
+IS_DEV = False
 POLLING_INTERVAL = 0.03 if not IS_DEV else 0.05
 STABLE_COUNT = 3 if not IS_DEV else 2
 # color

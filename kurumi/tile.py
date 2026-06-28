@@ -94,7 +94,7 @@ def predict_tile(img, threshold = 0.8, debug=False):
 TILE_SHAPE_RULE = {
     'self': {
         'hand': {
-            'area': (20000, 23000),
+            'area': (19000, 23000),
             'wh_ratio': (0.7, 0.8)
         },
         'kawa': {
@@ -114,14 +114,14 @@ TILE_SHAPE_RULE = {
     },
     'next': {
         'kawa': {
-            'area': (3500, 5500),
+            'area': (3500, 6000),
             'rotated_wh_ratio': (1.0, 1.4),
-            'wh_ratio': (1.8, 2.5)
+            'wh_ratio': (1.8, 2.6)
         },
         'meld': {
             'area': (3000, 5500), # (3000, ?)
             'rotated_wh_ratio': (1.2, 1.8),
-            'wh_ratio': (1.2, 2.5) #(?, 2.5)
+            'wh_ratio': (1.2, 2.6) #(?, 2.5)
         }
     },
     'across':{
@@ -138,7 +138,7 @@ TILE_SHAPE_RULE = {
     },
     'prev': {
         'kawa': {
-            'area': (3500, 5500),
+            'area': (3500, 6000),
             'rotated_wh_ratio': (1.0, 1.4),
             'wh_ratio': (1.8, 2.5)
         },

@@ -29,8 +29,8 @@ _cap_lock = threading.Lock()
 fps = cap.get(cv2.CAP_PROP_FPS)
 duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps   # 视频总时长（秒）
 
-VIDEO_START_MS = 29000       # dev 视频以这一毫秒处作为游标 0
-# VIDEO_START_MS = 503000
+VIDEO_START_MS = 366000       # dev 视频以这一毫秒处作为游标 0
+# VIDEO_START_MS = 366000
 
 # ── 单一游标 ──────────────────────────────────────────────────
 # 全局只有一个游标，代表"当前这一帧"。任何 reader 取帧（_read_source）都只读

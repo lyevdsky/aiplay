@@ -6,6 +6,7 @@ from gamestate import get_gamestate, set_gamestate
 from screenshot import get_screenshot, set_debug_screenshot
 from tile import check_tiles
 from util import stable_func, timed
+from config import POLLING_INTERVAL
 
 SELF_POINTS = [(2370, 1320), (2276, 1320)]
 PREV_POINTS = [(147, 1266),(164, 1198),(180,1130), (253,843)]
@@ -196,11 +197,11 @@ stabled_rec_new_meld = stable_func(rec_new_meld)
 
 def check_new_meld():
     count = 0
-    while count < 20:
+    while count < (3 / POLLING_INTERVAL):
         meld = stabled_rec_new_meld()
         if meld is not None:
             return meld
-        time.sleep(0.5)
+        time.sleep(POLLING_INTERVAL)
         count += 1
     else:
         raise RuntimeError('未识别出新的副露')
