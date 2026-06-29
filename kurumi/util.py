@@ -6,7 +6,6 @@ import numpy as np
 import pytesseract
 import asyncio
 import ddddocr
-from config import STABLE_COUNT
 # ── 临时性能埋点 ───────────────────────────────────────────────
 # 累加各埋点的总耗时/次数，进程退出（Ctrl-C 也算）时打印。定位完即可删。
 import atexit, collections
@@ -212,7 +211,7 @@ def crop_min_rect(image, hsv):
 import functools
 
 # 待函数返回结果稳定后才返回值，用于screenshot分析的相关函数
-def stable_func(func, stable_count=STABLE_COUNT, debug=False):
+def stable_func(func, stable_count=2, debug=False):
     """
     包装函数：连续 stable_count 次调用返回相同结果后才返回该结果，
     否则返回 None。忽略调用参数，所有调用共享状态。

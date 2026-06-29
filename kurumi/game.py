@@ -349,7 +349,14 @@ class Game:
                     # time sleep 是为了避免立直时放立直棒的手等立直动画，挡住已打牌，错判鸣牌。
                     time.sleep(0.8)
                     # TODO: 显而，如果是自己已经立直搭配上家立直，触发0.8s延迟，自己的摸牌毫无疑问会来不及识别。
-                    
+                # TODO check_dahai_claimed是否有必要呢，因为本来轮到这个玩家后就要一直check_new_meld。
+                # 那何不直接交由后续check来判断是否有鸣牌？问题是能区分明杠和加杠吗？可以区分
+                # 需要注意kawa_index 可能需要先+1，如果判断是鸣牌，则需要last_plaer的kawa_index - 1，
+                # 好处是少了一次rec_dahai，判断鸣牌更准确。不容易因各种原因误判鸣牌
+                # 坏处是如果因为bug导致跳过了一个玩家打牌,应该raise<没有鸣牌的情况下并没有正确轮到下一位玩家>,却没有raise。是否应该检查是否正常顺序。然后raise？
+                # 即是好处，又是坏处的地方就是因为没有了check_new_meld的while循环，而是和dahai阶段一样check_dahai和check_new_meld的轮流check，
+                # 将check_dahai 提前了，但是感觉除了增加了check_dahai的次数没什么作用。因为提不提前都能正确判断dahai。
+                # 因为现在主要的问题是立直动画导致的rec_dahai的延迟，导致的后续识别问题。
                 claimed = check_dahai_claimed()
 
                 state['current_player'] = player

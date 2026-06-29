@@ -11,8 +11,13 @@ from tile import check_tile
 from hand import rec_tsumo
 
 def crop_kawa_tile(player, pos, riichi_index = None):
+    # 牌河最多3行，每行6张；超过3行(pos >= 18)的牌继续接在第3行末尾
     row = pos // 6
     col = pos % 6
+    if row >= 3:
+        row = 2
+        col = pos - 12
+    # 因为现在取的region够大，即使前面有立直牌的偏移依然能完整覆盖打牌，而正确识别，因此不管立直偏移
     is_riichi_tile = pos == riichi_index
     has_riichi_offset = False if riichi_index == None else (riichi_index // 6) == (pos // 6) and not is_riichi_tile
     if player == 'self':
@@ -112,7 +117,7 @@ def _check_dahai():
         tile, tsumogiri, riichi = result
         return tile, tsumogiri, riichi
 
-check_dahai = stable_func(_check_dahai, debug=False)
+check_dahai = stable_func(_check_dahai, stable_count=3, debug=False)
 
 def check_dahai_claimed():
     # gamestate = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_markers': ['5s'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 1, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 2, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 2, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 2, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 2, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
@@ -124,8 +129,8 @@ def check_dahai_claimed():
     result = rec_dahai(player_pos, player_info['kawa_index'], player_info['riichi_index'], debug=False)
     return result is None
 
-# set_debug_screenshot('./error/0029_rec_kakan_L109.jpg')
-# res = rec_dahai('prev', 5, None, debug=True)
+# set_debug_screenshot('./error/sametile.png')
+# res = rec_dahai('self', 18, None, debug=True)
 # print(res)
 # for i in range(100):
 #     # set_debug_screenshot(f'./logs/20260617_165923/000{i}.jpg')
