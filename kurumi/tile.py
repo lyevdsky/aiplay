@@ -105,7 +105,7 @@ TILE_SHAPE_RULE = {
         'meld': {
             'area': (7000, 10000),
             'wh_ratio': (0.9,1.6),
-            'rotated_wh_ratio': (1.7, 2.0),
+            'rotated_wh_ratio': (1.7, 2.05),
         },
         'dora': {
             'area': (4000, 6000),
@@ -126,14 +126,14 @@ TILE_SHAPE_RULE = {
     },
     'across':{
         'kawa': {
-            'area': (3800, 6000),
-            'wh_ratio': (1.2, 1.45),
+            'area': (3500, 6000),
+            'wh_ratio': (1.1, 1.45),
             'rotated_wh_ratio': (1.8, 2.5),
         },
         'meld': {
             'area': (2600,4500), #(2600, ?)
             'wh_ratio': (1.2, 1.6),
-            'rotated_wh_ratio': (1.8, 2.5),
+            'rotated_wh_ratio': (1.8, 2.6),
         }
     },
     'prev': {
@@ -160,7 +160,7 @@ def get_min_area(player, type):
     return rule['area'][0] if rule else 0
 
 
-def validate_tileimg(tileimg, player, type):
+def validate_tileimg(tileimg, player, type, debug=False):
     h, w = tileimg.shape[:2]
 
     rule = get_shape_rule(player, type)
@@ -170,6 +170,8 @@ def validate_tileimg(tileimg, player, type):
     area = h * w
     area_min, area_max = rule['area']
     if not (area_min <= area <= area_max):
+        if debug:
+            print('validate_tileimg area error: ', player, type, area_min, area, area_max)
         return False
 
     ratio = w / h
@@ -178,6 +180,8 @@ def validate_tileimg(tileimg, player, type):
             lo, hi = rule[key]
             if lo <= ratio <= hi:
                 return True
+            if debug:
+                print('validate_tileimg rotio error: ', player, type, lo, ratio, hi)
 
     return False
 
@@ -242,7 +246,7 @@ def check_tile(img, player = 'self', type=TileType.Kawa, threshold=0.8, return_d
     else:
         tileimg = img
 
-    valid = validate_tileimg(tileimg, player, type)
+    valid = validate_tileimg(tileimg, player, type, debug=debug)
     # print('valid: ', valid)
     if not valid:
         return None

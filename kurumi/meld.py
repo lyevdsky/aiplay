@@ -181,15 +181,16 @@ def rec_new_meld():
     
     # print(f'check {player} meld result: ', meld)
     return meld
+# set_gamestate({'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 4, 'dora_markers': ['6m'], 'scores': [34000, 18600, 17000, 30400], 'players': [0, 1, 2, 3], 'position': ['prev', 'self', 'next', 'across'], 'current_player': 1, 'player_to_id': {'self': 1, 'next': 2, 'across': 3, 'prev': 0}, 'oya': 3, 'player_info': [{'kawa_index': 3, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 3, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 2, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 3, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 1})
 
-# for i in range(10):
+# for i in range(5):
 #     print(i)
-#     set_debug_screenshot(f'./logs/20260615_133324/000{i}.jpg')
-#     rec_new_meld()
+#     set_debug_screenshot(f'./logs/20260629_231436/snapshot_05_rec_new_meld_L132/000{i}_rec_new_meld_L132.jpg')
+#     res = rec_new_meld()
+#     print(res)
 
 # set_debug_screenshot('./error/0004_rec_new_meld_L132.jpg')
-# # # # # # set_debug_screenshot('./logs/20260617_154527/0009.jpg')
-# set_gamestate({'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'dora_markers': ['6p'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 0, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 7, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['7z', '7z'], 'tile': '7z'}], 'riichi': False}, {'kawa_index': 7, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 6, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 6, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0})
+# # # # # # # # set_debug_screenshot('./logs/20260617_154527/0009.jpg')
 # res = rec_new_meld()
 # print(res)
 

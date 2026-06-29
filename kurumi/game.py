@@ -193,6 +193,8 @@ class Game:
                 consumed = ['5' + suit] * 3
             else:
                 consumed = [self.last_dahai] * 3
+                
+            print_with_color(f'player {player} {type} < {consumed} >')
             self.notify({
                 'type': type,
                 'actor': player,
@@ -202,7 +204,6 @@ class Game:
             })
             player_melds.append({ 'type': 'daiminkan' })
 
-            print_with_color(f'player {player} {type} < {consumed} >')
         elif type == 'ankan':
             tile = meld['tile']
             num, suit = tile
@@ -210,12 +211,12 @@ class Game:
                 consumed = [tile] * 3 + ['0' + suit]
             else:
                 consumed = [tile] * 4
+            print_with_color(f'player {player} {type} < {consumed} >')
             self.notify({
                 'type': type,
                 'actor': player,
                 'consumed': consumed,
             })
-            print_with_color(f'player {player} {type} < {consumed} >')
             player_melds.append({ 'type': 'ankan' })
         elif type == 'kakan':
             # 注意 加杠返回的是之前碰的副露内容，
@@ -229,6 +230,7 @@ class Game:
             else:
                 pai = consumed[1]
             
+            print_with_color(f'player {player} {type} < {pai} >')
             self.notify({
                 'type': type,
                 'actor': player,
@@ -236,7 +238,6 @@ class Game:
                 'pai': pai
             })
             meld['type'] = 'kakan'
-            print_with_color(f'player {player} {type} < {pai} >')
 
     def open_dora(self):
         dora_marker = polling(check_new_dora_marker, POLLING_INTERVAL, timeout = 5)
