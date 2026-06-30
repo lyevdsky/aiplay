@@ -131,8 +131,8 @@ TILE_SHAPE_RULE = {
             'rotated_wh_ratio': (1.8, 2.5),
         },
         'meld': {
-            'area': (2600,4500), #(2600, ?)
-            'wh_ratio': (1.2, 1.6),
+            'area': (2600,5000),
+            'wh_ratio': (1.1, 1.6),
             'rotated_wh_ratio': (1.8, 2.6),
         }
     },
@@ -140,7 +140,7 @@ TILE_SHAPE_RULE = {
         'kawa': {
             'area': (3500, 6000),
             'rotated_wh_ratio': (1.0, 1.4),
-            'wh_ratio': (1.8, 2.5)
+            'wh_ratio': (1.7, 2.5)
         },
         'meld': {
             'area': (5000, 9500),
@@ -285,7 +285,7 @@ def check_tiles(img, player = 'self', type=TileType.Meld, threshold=0.8, debug=F
         x,y,w,h = cv2.boundingRect(c)
         tileimg = img[y:y+h,x:x+w]
 
-        valid = validate_tileimg(tileimg, player, type)
+        valid = validate_tileimg(tileimg, player, type, debug=debug)
         if not valid:
             continue
 
