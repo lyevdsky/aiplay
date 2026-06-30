@@ -131,12 +131,6 @@ def get_screenshot(region = None, save = 0):
 
     return shot
 
-def get_raw_frame():
-    """给后台 watcher 线程用的轻量取帧：不入 img_q、不做 region 裁剪、不记录
-    caller 快照、也不推进游标。只读当前游标那一帧，读到与上次相同也无妨。"""
-    with timed('get_raw_frame(watcher)'):
-        return _read_source()
-
 def save_img_q(path = None):
     if path == None:
         folder_name = './logs/' + datetime.now().strftime("%Y%m%d_%H%M%S")

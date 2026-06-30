@@ -1,74 +1,76 @@
-"""跑完测试数据（dev 下即 ./video/kyo.mp4），打印 ChangeWatcher 生成的 q 队列。
+"""跑完测试数据（dev 下即 ./video/kyo.mp4），打印 ChangeWatcher 产出的各队列信号。
 
-起真实的 ChangeWatcher 后台线程，按生产方式从 q 消费时序信号。
-新的单游标模型下，游标只由 main 侧的 advance_cursor 推动；本测试没有 main，
-故用一个「驱动线程」按 POLLING_INTERVAL 节奏推进游标、模拟 main 逐帧消费视频
-（与 watcher 取帧 ~1:1）。驱动线程读到 False/None 即视为测试数据跑完，停掉
-自身与 watcher；watcher 若先因终局中断自退，消费循环也会收工。
+新模型下 watcher 自己用 get_screenshot 推进 dev 单游标、并行识别全部信号
+（player_change / tsumo / dahai / meld / 终局中断 end），main 不再参与取帧或识别。
+本测试没有 main，仅起真实 watcher 后台线程，按生产方式从各队列消费并打印；
+end_q 拿到 hora/ryukyoku 或长时间无新信号即收工。
+
+注意：没有 main 推进 gamestate（current_player / kawa_index 等始终是初值），
+故 dahai/meld 检测只能反映「当前这一手番」的静态画面，无法跟随牌局推进——
+本测试只验证 watcher 能并行产出各类信号、不崩溃。需 IS_DEV=True（或先
+set_replay_folder）才会读视频而非摄像头。
 
 用法：cd kurumi && python test_change_watcher.py
 """
 import queue
-import threading
 import time
 
-from screenshot import get_raw_frame, advance_cursor
 from change_watcher import ChangeWatcher
-from config import POLLING_INTERVAL
+from gamestate import set_gamestate, init_gamestate
 
 
-def run_over_test_data(current_player=0,
-                       player_to_id=None,
-                       max_signals=100000):
+def run_over_test_data(current_player=0, player_to_id=None, max_signals=100000):
     if player_to_id is None:
         # 仅为演示队列产出，用恒等映射；真实运行时由 rec_kyoku_info 推出
         player_to_id = {'self': 0, 'next': 1, 'across': 2, 'prev': 3}
 
+    # 建立 gamestate：watcher 的 tsumo/dahai/meld 检测都读它。
+    init_gamestate()
+    position = [''] * 4
+    for name, pid in player_to_id.items():
+        position[pid] = name
+    set_gamestate({
+        'current_player': current_player,
+        'player_to_id': player_to_id,
+        'position': position,
+        'my_id': player_to_id['self'],
+    })
+
     w = ChangeWatcher()
     w.reset(current_player, player_to_id)
-    w.start()        # 内部会先清空 q，故无需手动预置信号
+    w.start()        # watcher 自驱：每轮 get_screenshot 推进游标、并行识别
 
-    # 游标驱动：模拟 main 每 POLLING_INTERVAL 取一帧推进一次游标，
-    # 读到 False/None 即数据耗尽，顺手停掉 watcher。
-    done = threading.Event()
-
-    def drive():
-        while not done.is_set():
-            advance_cursor()
-            shot = get_raw_frame()
-            if shot is None or shot is False:
-                break
-            time.sleep(POLLING_INTERVAL)
-        done.set()
-        w.stop()
-
-    threading.Thread(target=drive, daemon=True).start()
+    queues = {'player_change': w.q, 'tsumo': w.tsumo_q,
+              'dahai': w.dahai_q, 'meld': w.meld_q, 'end': w.end_q}
 
     events = []
-    while len(events) < max_signals:
-        try:
-            ev = w.q.get(timeout=0.2)
-        except queue.Empty:
-            # 数据耗尽，或 watcher 终局自退且队列已空 -> 收工
-            if done.is_set() or not w._running:
+    idle = 0.0
+    ended = False
+    while len(events) < max_signals and not ended:
+        got = False
+        for name, q in queues.items():
+            try:
+                ev = q.get_nowait()
+            except queue.Empty:
+                continue
+            got = True
+            events.append((name, ev))
+            print(f'已收信号 {len(events)}: [{name}] {ev}')
+            if name == 'end':
+                ended = True   # 终局，收工
+        if got:
+            idle = 0.0
+        else:
+            time.sleep(0.05)
+            idle += 0.05
+            if idle >= 5:      # 5s 无新信号（数据耗尽或卡住），收工
                 break
-            continue
-        events.append(ev)
-        print(f'\r已收信号 {len(events)}', end='', flush=True)
 
-    done.set()
     w.stop()
-    # 收尾：取走队列里可能残留的信号
-    while True:
-        try:
-            events.append(w.q.get_nowait())
-        except queue.Empty:
-            break
-
-    print('\n========== q 队列最终内容 ==========')
+    print('\n========== 各队列最终内容 ==========')
     print(f'产出 {len(events)} 个信号\n')
-    for i, ev in enumerate(events):
-        print(f'{i:02d}  {ev}')
+    for i, (name, ev) in enumerate(events):
+        print(f'{i:02d}  [{name}] {ev}')
     return events
 
 

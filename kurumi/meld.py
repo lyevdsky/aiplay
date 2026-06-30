@@ -105,13 +105,12 @@ def get_current_player_info():
     return player_pos, melds
 
 # 识别是否存在加杠
-def rec_kakan():
-    shot = get_screenshot(save=5)
+def rec_kakan(shot):
     player, melds = get_current_player_info()
     for i, meld in enumerate(melds):
         if meld['type'] == 'pon':
             x,y,w,h = get_meld_region(player, melds, i)
-            result = check_tiles(shot[y:y+h,x:x+w], player, debug=False)            
+            result = check_tiles(shot[y:y+h,x:x+w], player, debug=False)
             if len(result) == 4:
                 # 这里识别到加杠需要改type，
                 meld['type'] = 'kakan'
@@ -120,7 +119,7 @@ def rec_kakan():
 
 # 加杠另外单独识别
 # 识别当前玩家是否有新副露
-def rec_new_meld():
+def rec_new_meld(shot):
   with timed('rec_new_meld'):
     player, melds = get_current_player_info()
     # melds = [{ 'type': 'chi'}, { 'type': 'pon' }, { 'type': 'chi' }]
@@ -129,7 +128,7 @@ def rec_new_meld():
     # melds = []
     # player = 'next'
     x,y,w,h = get_meld_region(player, melds, len(melds))
-    img = get_screenshot((x,y,w,h), save=5)
+    img = shot[y:y+h, x:x+w]
     # cv2.imshow('img', img)
     # cv2.waitKey()
     result = check_tiles(img, player, debug=False)
@@ -195,24 +194,12 @@ def rec_new_meld():
 # print(res)
 
 stabled_rec_new_meld = stable_func(rec_new_meld)
-
-def check_new_meld():
-    count = 0
-    while count < (3 / POLLING_INTERVAL):
-        meld = stabled_rec_new_meld()
-        if meld is not None:
-            return meld
-        time.sleep(POLLING_INTERVAL)
-        count += 1
-    else:
-        raise RuntimeError('未识别出新的副露')
-
 stabled_rec_kakan = stable_func(rec_kakan)
-def check_kan():
-    kakan_meld = stabled_rec_kakan()
-    if kakan_meld is not None:
-        return kakan_meld
-    ankan_meld = stabled_rec_new_meld()
-    if ankan_meld is not None:
-        return ankan_meld
-    return None
+
+# 新副露：吃/碰/暗杠/大明杠，扫「下一副露位」识别。
+def check_new_meld(shot):
+    return stabled_rec_new_meld(shot)
+
+# 加杠：既有的碰升级成杠，原地不占新副露位，rec_new_meld 扫不到，需单独识别。
+def check_kakan(shot):
+    return stabled_rec_kakan(shot)

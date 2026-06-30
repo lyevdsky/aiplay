@@ -25,14 +25,14 @@ def rec_hand():
     # concat_images_horizontal(imgs, 10, debug = True)
     return tiles
 
-def rec_tsumo():
+def rec_tsumo(shot):
     x,y,w,h = HAND_FIRST_REGION
     gamestate = get_gamestate()
     id = gamestate['player_to_id']['self']
 
     meld_len = len(gamestate['player_info'][id]["melds"])
     x = x + w * 13 - meld_len * 3 * w + DRAWN_GAP
-    drawn = get_screenshot((x, y - 90, w, h + 90), save=5) # 这里增加识别区的高度，是因为有可能鼠标hover时，牌上浮导致识别不到。
+    drawn = shot[y - 90:y + h, x:x + w] # 这里增加识别区的高度，是因为有可能鼠标hover时，牌上浮导致识别不到。
     # cv2.imshow('drawn', drawn)
     # cv2.waitKey(0)
     # cv2.destroyWindow('drawn')

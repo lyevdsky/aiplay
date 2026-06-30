@@ -8,8 +8,6 @@ from screenshot import get_screenshot, save_img_q
 from kyoku import rec_kyoku_info, check_new_dora_marker, wait_new_kyoku
 from gamestate import get_gamestate, init_gamestate, set_gamestate
 from hand import rec_hand, check_tsumo, rec_tsumo
-from kawa import check_dahai, check_dahai_claimed
-from meld import check_new_meld, check_kan
 from util import polling, timed
 from config import POLLING_INTERVAL, IS_DEV
 from enum import Enum
@@ -17,7 +15,6 @@ from pynput import keyboard
 from mortal.bot import Bot
 from kurumi.mortal.conv import format_output
 from change_watcher import ChangeWatcher
-from hora import check_interrupt
 import queue
 
 class Phase(Enum):
@@ -249,57 +246,39 @@ class Game:
         })
         self.need_open_dora = False
 
+    def wait_any(self, queues, timeout=None):
+        """从给定队列集合取第一个可用事件。watcher 全程并行识别（含终局中断），
+        转换即入队；main 只消费、不识别。用带 timeout 的轮询而非阻塞 get，
+        以保持 Ctrl+C 可响应（否则会卡在 Queue 的 C 级锁里）。"""
+        elapsed = 0.0
+        while timeout is None or elapsed < timeout:
+            for q in queues:
+                try:
+                    return q.get_nowait()
+                except queue.Empty:
+                    pass
+            time.sleep(POLLING_INTERVAL)
+            elapsed += POLLING_INTERVAL
+        raise TimeoutError('wait_any 超时没有结果')
+
     def main(self):
         state = self.state
 
         # 监视线程每局由 start_kyoku 拉起（main 在终局调用 stop 回收），此处不再统一启动
-
-        # Claim 阶段消费下一个时序信号：阻塞等 watcher 的 player_change，
-        # 同时自己轮询终局中断（watcher 已不产中断，且此处可能一直等不到
-        # 下一个 player_change——比如这张牌被荣和 / 这局荒牌流局）。
-        # 带超时轮询，否则主线程会卡在 Queue 的 C 级锁里，Ctrl+C 无法生效。
-        def wait_signal():
-            while True:
-                try:
-                    return self.watcher.q.get(timeout=POLLING_INTERVAL)
-                except queue.Empty:
-                    pass
-                # check_interrupt：非中断立即返回 None；已进入中断则阻塞到分辨出结果
-                interrupt = check_interrupt()
-                if interrupt is not None:
-                    return {'type': interrupt}
-
-        # check current_player kakan ankan dahai hora
-        def check_dahai_phase():
-            player = state['current_player']
-
-            # 终局中断检测移回主流程：check_interrupt 一旦确认进入中断动画，
-            # 就阻塞等到分辨出 hora / ryukyoku 再返回，期间不再认牌，
-            # 避免吃碰杠 / 终局动画被误识别成打牌（见 hora.py 注释）。
-            interrupt = check_interrupt()
-            if interrupt is not None:
-                return interrupt
-
-            meld = check_kan()
-            if meld is not None:
-                self.claim(player, meld)
-                return meld['type']
-
-            res = check_dahai()
-            if res is not None:
-                tile, tsumogiri, riichi = res
-                self.dahai(player, tile, tsumogiri, riichi)
-                return 'dahai'
-
-            return None
-
+        # 所有识别（tsumo/dahai/副露/player_change/终局中断）都在 watcher 线程并行，
+        # main 只在各 phase 从对应队列取/等结果，自身不做任何识别。
+        # end_q（hora/ryukyoku）在每个等待点都纳入，终局中断随时可被消费。
 
         while True:
             player = state['current_player']
 
             if self.phase == Phase.Tsumo:
                 if player == state['my_id']:
-                    tile = polling(check_tsumo, POLLING_INTERVAL, timeout = 10)
+                    msg = self.wait_any([self.watcher.tsumo_q, self.watcher.end_q], timeout=10)
+                    if msg['type'] in ('hora', 'ryukyoku'):
+                        self.phase = Phase.Hora if msg['type'] == 'hora' else Phase.Ryukyoku
+                        continue
+                    tile = msg['tile']
                 else:
                     tile = '?'
 
@@ -307,14 +286,25 @@ class Game:
                 self.phase = Phase.Dahai
 
             elif self.phase == Phase.Dahai:
-                action = polling(check_dahai_phase, POLLING_INTERVAL, timeout=30)
+                # 副露优先于打牌（暗杠/加杠时不该被误判成打牌），故 meld_q 排在前
+                msg = self.wait_any([self.watcher.meld_q, self.watcher.dahai_q, self.watcher.end_q], timeout=30)
+                action = msg['type']
+
+                if action == 'hora':
+                    self.phase = Phase.Hora
+                    continue
+                elif action == 'ryukyoku':
+                    self.phase = Phase.Ryukyoku
+                    continue
+                elif action == 'dahai':
+                    self.dahai(player, msg['tile'], msg['tsumogiri'], msg['riichi'])
+                else:  # dahai 阶段的副露只可能是自家 ankan / kakan
+                    self.claim(player, msg)
+
                 if action == 'dahai':
                     if self.need_open_dora:
                         self.open_dora()
-
                     self.phase = Phase.Claim
-                elif action == 'hora':
-                    self.phase = Phase.Hora
                 elif action == 'ankan':
                     if self.need_open_dora:
                         self.open_dora()
@@ -327,9 +317,8 @@ class Game:
                     self.phase = Phase.Tsumo
 
             elif self.phase == Phase.Claim:
-                # 从队列消费时序信号：active bar 的亮灭转换由后台线程全程
-                # 盯着、转换即入队，不再受识别快慢拖累。
-                msg = wait_signal()
+                # active bar 的亮灭转换由 watcher 全程盯着、转换即入 player_q。
+                msg = self.wait_any([self.watcher.q, self.watcher.end_q])
                 if msg['type'] == 'hora':
                     self.phase = Phase.Hora
                     continue
@@ -340,6 +329,9 @@ class Game:
                 player = msg['pid']
                 print_with_color(f'切换至玩家 {player}')
 
+                # 先更新 current_player，watcher 才会按新玩家扫描副露区（meld_q）
+                state['current_player'] = player
+
                 if self.need_open_dora:
                     self.open_dora()
 
@@ -349,7 +341,7 @@ class Game:
                     self.riichi_to_accepted = None
                     # time sleep 是为了避免立直时放立直棒的手等立直动画，挡住已打牌，错判鸣牌。
                     time.sleep(0.8)
-                    # TODO: 显而，如果是自己已经立直搭配上家立直，触发0.8s延迟，自己的摸牌毫无疑问会来不及识别。
+
                 # TODO check_dahai_claimed是否有必要呢，因为本来轮到这个玩家后就要一直check_new_meld。
                 # 那何不直接交由后续check来判断是否有鸣牌？问题是能区分明杠和加杠吗？可以区分
                 # 需要注意kawa_index 可能需要先+1，如果判断是鸣牌，则需要last_plaer的kawa_index - 1，
@@ -358,13 +350,19 @@ class Game:
                 # 即是好处，又是坏处的地方就是因为没有了check_new_meld的while循环，而是和dahai阶段一样check_dahai和check_new_meld的轮流check，
                 # 将check_dahai 提前了，但是感觉除了增加了check_dahai的次数没什么作用。因为提不提前都能正确判断dahai。
                 # 因为现在主要的问题是立直动画导致的rec_dahai的延迟，导致的后续识别问题。
-                claimed = check_dahai_claimed()
 
-                state['current_player'] = player
+                # 不再用 check_dahai_claimed 判断是否被鸣：鸣牌必被 watcher 的 check_new_meld
+                # 捕获并入 meld_q。先简单地 sleep 1s 给 watcher 识别时间，再看 meld_q 有无副露。
+                # TODO: 后续把「取队列判断」上移到与 self.phase== 同级，由队列直接驱动 phase 设置；
+                #       届时 kawa_index 改为「先增后减」（先假设未鸣 +1，若判定被鸣再 -1）。
+                time.sleep(1)
+                try:
+                    meld = self.watcher.meld_q.get_nowait()
+                except queue.Empty:
+                    meld = None
 
-                if claimed:
+                if meld is not None:
                     print_with_color(f'玩家 {player} 鸣牌')
-                    meld = check_new_meld()
                     self.claim(player, meld)
                     if meld['type'] == 'daiminkan':
                         self.need_open_dora = True

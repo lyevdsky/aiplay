@@ -21,33 +21,17 @@ def is_ryukyoku():
     ratio2 = compute_mask_ratio(screenshot, CONFIRM_TEXT_HSV)
     return (ratio + ratio2) > 0.85
 
-def is_interrupt():
+def is_interrupt(shot):
     x,y,w,h = DORA_FIRST_REGION
-    doraimg = get_screenshot(DORA_FIRST_REGION, save=10)
+    doraimg = shot[y:y+h, x:x+w]
     cs = find_contour(doraimg, WHILE_HSV, min_area= w * h * 0.9, debug=False)
 
     if len(cs) == 0:
         cs = find_contour(doraimg, SAME_TILE_HIGHLIGHT_HSV, min_area= w * h * 0.9, debug=False)
     return len(cs) == 0
 
-def check_interrupt():
-    # print('check_interrupt')
-    # TODO 还是得改为识别宝牌1是否有白色区域？  z5的老是误识别
-    # 因为认定为interrupt后，只要没检查到原因还是会抛出去，导致一些动画误检测为打牌z5.
-    # 吃碰杠的动画，还是有可能被误识别打牌的！特别是z5
-    
-    if not is_interrupt():
-        return None
-    
-    print('check_interrupt: True')
-    while True:
-        hora = is_hora()
-        if hora:
-            return 'hora'
-        ryukyoku = is_ryukyoku()
-        if ryukyoku:
-            return 'ryukyoku'
-        time.sleep(0.5)
+# 终局中断的「检测 + 分辨 hora/ryukyoku」已整体移入 ChangeWatcher._loop：
+# is_interrupt 命中后由 watcher 阻塞轮询 is_hora / is_ryukyoku 并推入 end_q。
 
 # set_debug_screenshot('./error/0403_is_ryukyoku_L19.jpg')
 
