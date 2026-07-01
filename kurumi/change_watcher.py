@@ -112,7 +112,8 @@ class ChangeWatcher:
                 time.sleep(POLLING_INTERVAL)
                 continue
 
-            cur = get_gamestate()['current_player']
+            gs = get_gamestate()
+            cur = gs['current_player']
 
             # player_change：盯 active bar，自维护 _current_player 去重；
             # 队列尚有未消费信号则跳过，避免重复推送。
@@ -131,8 +132,10 @@ class ChangeWatcher:
                 if tile is not None:
                     self.tsumo_q.put({'type': 'tsumo', 'pid': cur, 'tile': tile})
 
-            # 打牌：当前玩家牌河下一张。
-            if self.dahai_q.empty():
+            # 打牌：当前玩家牌河下一张。前置条件 current_player != last_player
+            # 当前玩家一旦打牌，main 会把 last_player 置为它，于是停检，直到手番
+            # 转移；天然避免重复识别同一张打牌。
+            if cur != gs['last_player'] and self.dahai_q.empty():
                 res = check_dahai(shot)
                 if res is not None:
                     tile, tsumogiri, riichi = res

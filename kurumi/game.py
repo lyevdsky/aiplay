@@ -1,32 +1,19 @@
 import warnings
 warnings.filterwarnings("ignore")
-import asyncio
 import json
 import time
 
 from screenshot import get_screenshot, save_img_q
+from logger_setup import save_log
 from kyoku import rec_kyoku_info, check_new_dora_marker, wait_new_kyoku
-from gamestate import get_gamestate, init_gamestate, set_gamestate
+from gamestate import get_gamestate, init_gamestate, set_gamestate, Phase
 from hand import rec_hand, check_tsumo, rec_tsumo
 from util import polling, timed
 from config import POLLING_INTERVAL, IS_DEV
-from enum import Enum
 from pynput import keyboard
 from mortal.bot import Bot
-from kurumi.mortal.conv import format_output
 from change_watcher import ChangeWatcher
 import queue
-
-class Phase(Enum):
-    StartKyoku = 0
-    Dahai = 1
-    Tsumo = 2
-    Claim = 3
-    Hora = 4
-    Ryukyoku = 5
-    EndKyoku = 6
-    EndGame = 7
-    StartGame = 8
 
 # TODO
 # ai print less !
@@ -55,14 +42,41 @@ class Game:
         self.need_open_dora = 0
         self.phase = Phase.StartGame
         self.remaining_tsumo = 70
-        # if IS_DEV:
-            # self.bot = None
-        # else:
-        self.bot = Bot()
+        if IS_DEV:
+            self.bot = None
+        else:
+            self.bot = Bot()
         self.listener = listener
         # watcher 永远起：dev/replay 下两个读取者各持独立游标读同一帧源，
         # 复刻生产环境的并行取帧，main 流程不区分 dev/生产。
         self.watcher = ChangeWatcher()
+
+    @property
+    def phase(self):
+        # phase 归属 gamestate，唯一真相源就是 gamestate['phase']；main 负责更新。
+        return self.state.get('phase')
+
+    @phase.setter
+    def phase(self, value):
+        self.state['phase'] = value
+
+    # last_player / last_dahai 同样归属 gamestate：main 更新，watcher 读它们
+    # 作为 dahai check 的前置条件（current_player != last_player 才检打牌）。
+    @property
+    def last_player(self):
+        return self.state.get('last_player')
+
+    @last_player.setter
+    def last_player(self, value):
+        self.state['last_player'] = value
+
+    @property
+    def last_dahai(self):
+        return self.state.get('last_dahai')
+
+    @last_dahai.setter
+    def last_dahai(self, value):
+        self.state['last_dahai'] = value
 
     def start_with_state(self, state):
         set_gamestate(state)
@@ -449,6 +463,9 @@ def on_press(key):
         print_with_color('按下了F1，保存最近截图', 'red')
         # 这里可以放置你的 F1 功能逻辑
         save_img_q()
+    elif key == keyboard.Key.f2:
+        print_with_color('按下了F2，保存日志', 'red')
+        save_log('按下F2手动保存')
 
 listener = keyboard.Listener(on_press=on_press)
 listener.start()
