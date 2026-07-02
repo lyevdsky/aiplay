@@ -286,6 +286,7 @@ class Game:
             return cur
 
     def main(self):
+        INTERVAL_TIME = 0.5
         state = self.state
 
         # 监视线程每局由 start_kyoku 拉起（main 在终局调用 stop 回收），此处不再统一启动
@@ -347,7 +348,8 @@ class Game:
                     # 需要补上摸牌阶段
                     self.phase = Phase.Tsumo
                 else:
-                    pass
+                    time.sleep(INTERVAL_TIME)
+                    continue
 
             if self.phase == Phase.Tsumo:
                 # TODO 校验
@@ -358,7 +360,7 @@ class Game:
                         tile = tsumo['tile']
                         tsumo = None
                     else:
-                        time.sleep(POLLING_INTERVAL * 2)
+                        time.sleep(INTERVAL_TIME)
                         continue
                 else:
                     tile = '?'
@@ -392,7 +394,7 @@ class Game:
                         self.phase = Phase.Tsumo
 
                 if dahai is None:
-                    time.sleep(POLLING_INTERVAL * 2)
+                    time.sleep(INTERVAL_TIME)
                     continue
 
                 self.dahai(player, dahai['tile'], dahai['tsumogiri'], dahai['riichi'])
@@ -410,7 +412,7 @@ class Game:
                         self.phase = Phase.Ryukyoku
                         continue
                 if change_player is None:
-                    time.sleep(POLLING_INTERVAL * 2)
+                    time.sleep(INTERVAL_TIME)
                     continue
                 
                 player = change_player['pid']
@@ -486,7 +488,7 @@ class Game:
                 print_with_color('游戏结束')
                 self.print_mjai()
                 break
-    
+
     def notify(self, message):
         self.mjai.append(message)
 
