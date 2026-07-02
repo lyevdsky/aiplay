@@ -87,8 +87,6 @@ class ChangeWatcher:
                 if pid != self._current_player:
                     self._current_player = pid
                     self.q.put({'type': 'player_change', 'pid': pid})
-                    text = f'change_watcher: player change to {pid}'
-                    print(text)
 
             time.sleep(POLLING_INTERVAL)
 
