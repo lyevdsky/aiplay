@@ -22,7 +22,7 @@ class ChangeWatcher:
     推入各自的队列；main 在对应 phase 主动从它需要的队列取/等数据。
 
     产出 5 类信号 / 5 个队列：
-    - self.q       : player_change（盯 active bar，沿用自维护 _current_player 去重）
+    - self.player_q       : player_change（盯 active bar，沿用自维护 _current_player 去重）
     - self.tsumo_q : 自己摸牌
     - self.dahai_q : 当前玩家打牌
     - self.meld_q  : 副露（check_new_meld 吃/碰/暗杠/大明杠 + check_kakan 加杠）
@@ -40,7 +40,7 @@ class ChangeWatcher:
     """
 
     def __init__(self):
-        self.q = queue.Queue()           # player_change
+        self.player_q = queue.Queue()           # player_change
         self.tsumo_q = queue.Queue()
         self.dahai_q = queue.Queue()
         self.meld_q = queue.Queue()
@@ -69,7 +69,7 @@ class ChangeWatcher:
         if self._running:
             return
         # 清空各队列，避免之前对局异常终止，残留
-        for q in (self.q, self.tsumo_q, self.dahai_q, self.meld_q, self.end_q):
+        for q in (self.player_q, self.tsumo_q, self.dahai_q, self.meld_q, self.end_q):
             while True:
                 try:
                     q.get_nowait()
@@ -87,6 +87,17 @@ class ChangeWatcher:
         if t is not None and t.is_alive() and t is not threading.current_thread():
             t.join(timeout=2)
         self._thread = None
+
+    @staticmethod
+    def _keep_latest(q, item=None):
+        """把队列刷成「只含最新一项」：先清空，item 非 None 再放入。
+        用于 tsumo_q——不断覆盖更新，main 取到的永远是最近一次识别结果。"""
+        try:
+            q.get_nowait()
+        except queue.Empty:
+            pass
+        if item is not None:
+            q.put(item)
 
     def _loop(self):
         while self._running:
@@ -117,20 +128,25 @@ class ChangeWatcher:
 
             # player_change：盯 active bar，自维护 _current_player 去重；
             # 队列尚有未消费信号则跳过，避免重复推送。
-            if self.q.empty():
+            if self.player_q.empty():
                 active = self._stable_active(shot)
                 if active is not None:
                     pid = self._player_to_id[active]
                     if pid != self._current_player:
                         self._current_player = pid
-                        self.q.put({'type': 'player_change', 'pid': pid})
-                        print(f'change_watcher: player change to {pid}')
+                        self.player_q.put({'type': 'player_change', 'pid': pid})
+                        # print(f'change_watcher: player change to {pid}')
 
-            # 摸牌：rec_tsumo 看自己手牌的摸牌位，只有自己摸牌才识别得到。
-            if self.tsumo_q.empty():
+            # 摸牌：只在自己手番识别（rec_tsumo 看自己手牌的摸牌位）。tsumo_q 只
+            # 保留最近一次结果——不断覆盖更新，让 main 取到最新最稳的摸牌；None 不入
+            # 队。非自己手番则清空，避免上一手番的摸牌残留到下一手番。
+            my_id = self._player_to_id['self']
+            if self._current_player == my_id:
                 tile = check_tsumo(shot)
                 if tile is not None:
-                    self.tsumo_q.put({'type': 'tsumo', 'pid': cur, 'tile': tile})
+                    self._keep_latest(self.tsumo_q, {'type': 'tsumo', 'pid': my_id, 'tile': tile})
+            else:
+                self._keep_latest(self.tsumo_q)
 
             # 打牌：当前玩家牌河下一张。前置条件 current_player != last_player
             # 当前玩家一旦打牌，main 会把 last_player 置为它，于是停检，直到手番
@@ -144,8 +160,9 @@ class ChangeWatcher:
 
             # 副露：新副露（吃/碰/暗杠/大明杠）与加杠分别识别，二者互斥。
             # meld 本身就带 type（chi/pon/ankan/daiminkan/kakan），直接入队，
-            # main 按 type 分派即可。
-            if self.meld_q.empty():
+            # main 按 type 分派即可。前置条件同 dahai：current_player != last_player，
+            # 当前玩家一旦打牌就停检（其手番结束、不会再有新副露），避免无谓识别与残留。
+            if cur != gs['last_player'] and self.meld_q.empty():
                 meld = check_new_meld(shot) or check_kakan(shot)
                 if meld is not None:
                     self.meld_q.put(meld)

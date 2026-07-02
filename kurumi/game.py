@@ -23,12 +23,13 @@ import queue
 # 窗口最大化
 
 def print_with_color(text, color = 'green'):
+    ts = time.strftime('%H:%M:%S')
     if color == 'green':
-        print(f'\033[32m [GAME] {text} \033[0m')
+        print(f'\033[32m {ts} [GAME] {text} \033[0m')
     elif color == 'red':
-        print(f"\033[31m [GAME] {text} \033[0m")
+        print(f"\033[31m {ts} [GAME] {text} \033[0m")
     elif color == 'blue':
-        print(f"\033[34m [AI] {text} \033[0m")
+        print(f"\033[34m {ts} [AI] {text} \033[0m")
 
 print_with_color('正在识别牌局信息...')
 class Game:
@@ -282,17 +283,91 @@ class Game:
         # 所有识别（tsumo/dahai/副露/player_change/终局中断）都在 watcher 线程并行，
         # main 只在各 phase 从对应队列取/等结果，自身不做任何识别。
         # end_q（hora/ryukyoku）在每个等待点都纳入，终局中断随时可被消费。
-
+        is_meld_make_player_change = False
+        change_player = None
+        meld = None
+        tsumo = None
+        dahai = None
+        end = None
+        rec_start_time = None # 开始识别dahai，tsumo等的开始时间，用于判断是否超时异常。 不过先不写了，可以主动ctrl+c终止。
+        # 后续因为 没有了wait，polling。 而是while的每轮循环都会check。所以已经可以实现中断了。
         while True:
             player = state['current_player']
+            with timed('get_queue'):
+                try:
+                    if meld is None:
+                        meld = self.watcher.meld_q.get_nowait()
+                except queue.Empty:
+                    pass
+                try:
+                    tsumo = self.watcher.tsumo_q.get_nowait()
+                except queue.Empty:
+                    pass
+                try:
+                    if dahai is None:
+                        dahai = self.watcher.dahai_q.get_nowait()
+                except queue.Empty:
+                    pass
+                try:
+                    end = self.watcher.end_q.get_nowait()
+                except queue.Empty:
+                    pass
+
+                try:
+                    change_player = self.watcher.player_q.get_nowait()
+                except queue.Empty:
+                    pass
+            
+            # 因为不使用check_dahai_claim
+            # 需要专门处理claim阶段，判断切换玩家时是鸣牌还是正常摸牌以及后续流程
+            if self.phase == Phase.Unknown:
+    
+                if meld is not None:
+                    # 处理鸣牌阶段的鸣牌
+                    if meld['type'] == 'chi':
+                        self.claim(player, meld)
+                        meld = None
+                        self.phase = Phase.Dahai
+                        self.state['player_info'][self.last_player]['kawa_index'] -= 1
+                    elif meld['type'] == 'pon':
+                        self.claim(player, meld)
+                        meld = None
+                        self.phase = Phase.Dahai
+                        self.state['player_info'][self.last_player]['kawa_index'] -= 1
+                    elif meld['type'] == 'daiminkan':
+                        self.claim(player, meld)
+                        meld = None
+                        self.phase = Phase.Tsumo
+                        self.need_open_dora = True
+                        self.state['player_info'][self.last_player]['kawa_index'] -= 1
+                    # 处理加杠和暗杠，meld先不处理，补上摸牌阶段，后续处理交由打牌阶段
+                    elif meld['type'] == 'kakan':
+                        self.phase = Phase.Tsumo
+                    elif meld['type'] == 'ankan':
+                        self.phase = Phase.Tsumo
+
+                elif tsumo is not None:
+                    self.phase = Phase.Tsumo
+                elif dahai is not None:
+                    # unknown阶段识别出dahai，说明是非自家正常摸牌后打牌，先补上摸牌阶段
+                    self.phase = Phase.Tsumo
+                elif end is not None:
+                    # 需要补上摸牌阶段
+                    self.phase = Phase.Tsumo
+                else:
+                    pass
 
             if self.phase == Phase.Tsumo:
+                # TODO 校验
+                # if (self.last_player + 1) % 4 != player:
+                #     raise RuntimeError('没有鸣牌的情况下并没有正确轮到下一位玩家')
                 if player == state['my_id']:
-                    msg = self.wait_any([self.watcher.tsumo_q, self.watcher.end_q], timeout=10)
-                    if msg['type'] in ('hora', 'ryukyoku'):
-                        self.phase = Phase.Hora if msg['type'] == 'hora' else Phase.Ryukyoku
+                    if tsumo is not None:
+                        tile = tsumo['tile']
+                        tsumo = None
+                    else:
+                        time.sleep(POLLING_INTERVAL * 2)
                         continue
-                    tile = msg['tile']
                 else:
                     tile = '?'
 
@@ -300,51 +375,60 @@ class Game:
                 self.phase = Phase.Dahai
 
             elif self.phase == Phase.Dahai:
-                # 副露优先于打牌（暗杠/加杠时不该被误判成打牌），故 meld_q 排在前
-                msg = self.wait_any([self.watcher.meld_q, self.watcher.dahai_q, self.watcher.end_q], timeout=30)
-                action = msg['type']
+                # 只有dahai阶段和claim阶段才有end。
+                if end is not None:
+                    if end['type'] == 'hora':
+                        self.phase = Phase.Hora
+                        continue
+                    elif end['type'] == 'ryukyoku':
+                        self.phase = Phase.Ryukyoku
+                        continue
+                if meld is not None:
+                    if meld['type'] == 'ankan':
+                        self.claim(player, meld)
+                        meld = None
+                        if self.need_open_dora:
+                            self.open_dora()
+                        self.open_dora()
+                        self.phase = Phase.Tsumo
+                    elif meld['type'] == 'kakan':
+                        self.claim(player, meld)
+                        meld = None
+                        if self.need_open_dora:
+                            self.open_dora()
+                        self.need_open_dora = True
+                        self.phase = Phase.Tsumo
 
-                if action == 'hora':
-                    self.phase = Phase.Hora
+                if dahai is None:
+                    time.sleep(POLLING_INTERVAL * 2)
                     continue
-                elif action == 'ryukyoku':
-                    self.phase = Phase.Ryukyoku
-                    continue
-                elif action == 'dahai':
-                    self.dahai(player, msg['tile'], msg['tsumogiri'], msg['riichi'])
-                else:  # dahai 阶段的副露只可能是自家 ankan / kakan
-                    self.claim(player, msg)
 
-                if action == 'dahai':
-                    if self.need_open_dora:
-                        self.open_dora()
-                    self.phase = Phase.Claim
-                elif action == 'ankan':
-                    if self.need_open_dora:
-                        self.open_dora()
-                    self.open_dora()
-                    self.phase = Phase.Tsumo
-                elif action == 'kakan':
-                    if self.need_open_dora:
-                        self.open_dora()
-                    self.need_open_dora = True
-                    self.phase = Phase.Tsumo
+                self.dahai(player, dahai['tile'], dahai['tsumogiri'], dahai['riichi'])
+                dahai = None
+                self.phase = Phase.Claim
 
             elif self.phase == Phase.Claim:
                 # active bar 的亮灭转换由 watcher 全程盯着、转换即入 player_q。
-                msg = self.wait_any([self.watcher.q, self.watcher.end_q])
-                if msg['type'] == 'hora':
-                    self.phase = Phase.Hora
-                    continue
-                elif msg['type'] == 'ryukyoku':
-                    self.phase = Phase.Ryukyoku
-                    continue
 
-                player = msg['pid']
+                if end is not None:
+                    if end['type'] == 'hora':
+                        self.phase = Phase.Hora
+                        continue
+                    elif end['type'] == 'ryukyoku':
+                        self.phase = Phase.Ryukyoku
+                        continue
+                if change_player is None:
+                    time.sleep(POLLING_INTERVAL * 2)
+                    continue
+                
+                player = change_player['pid']
                 print_with_color(f'切换至玩家 {player}')
 
                 # 先更新 current_player，watcher 才会按新玩家扫描副露区（meld_q）
                 state['current_player'] = player
+                # 切换到自己时会开始识别tsumo，这里先将tsumo清空，避免上手番的残留
+                tsumo = None
+                change_player = None
 
                 if self.need_open_dora:
                     self.open_dora()
@@ -369,25 +453,9 @@ class Game:
                 # 捕获并入 meld_q。先简单地 sleep 1s 给 watcher 识别时间，再看 meld_q 有无副露。
                 # TODO: 后续把「取队列判断」上移到与 self.phase== 同级，由队列直接驱动 phase 设置；
                 #       届时 kawa_index 改为「先增后减」（先假设未鸣 +1，若判定被鸣再 -1）。
-                time.sleep(1)
-                try:
-                    meld = self.watcher.meld_q.get_nowait()
-                except queue.Empty:
-                    meld = None
-
-                if meld is not None:
-                    print_with_color(f'玩家 {player} 鸣牌')
-                    self.claim(player, meld)
-                    if meld['type'] == 'daiminkan':
-                        self.need_open_dora = True
-                        self.phase = Phase.Tsumo
-                    else:
-                        self.phase = Phase.Dahai
-                else:
-                    if (self.last_player + 1) % 4 != player:
-                        raise RuntimeError('没有鸣牌的情况下并没有正确轮到下一位玩家')
-                    self.state['player_info'][self.last_player]['kawa_index'] += 1
-                    self.phase = Phase.Tsumo
+                # time.sleep(1)
+                self.state['player_info'][self.last_player]['kawa_index'] += 1
+                self.phase = Phase.Unknown
 
             elif self.phase == Phase.StartKyoku:
                 self.start_kyoku()
@@ -405,6 +473,8 @@ class Game:
                 self.phase = Phase.EndKyoku
 
             elif self.phase == Phase.EndKyoku:
+                end = None
+                tsumo = None
                 self.watcher.stop()
                 self.notify({
                     'type': 'end_kyoku'

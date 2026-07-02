@@ -11,7 +11,7 @@ class Phase(Enum):
     EndKyoku = 6
     EndGame = 7
     StartGame = 8
-
+    Unknown = 9
 
 gamestate = {
     "honba": 0,
