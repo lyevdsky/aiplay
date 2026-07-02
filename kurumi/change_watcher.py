@@ -148,24 +148,24 @@ class ChangeWatcher:
             else:
                 self._keep_latest(self.tsumo_q)
 
-            # 打牌：当前玩家牌河下一张。前置条件 current_player != last_player
-            # 当前玩家一旦打牌，main 会把 last_player 置为它，于是停检，直到手番
-            # 转移；天然避免重复识别同一张打牌。
-            if cur != gs['last_player'] and self.dahai_q.empty():
+            # 打牌：当前玩家牌河下一张。前置条件 current_player != last_player——
+            # 当前玩家一旦打牌，main 会把 last_player 置为它，于是停检，直到手番转移。
+            # dahai_q 同 tsumo_q 只保留最新一次结果，main 每轮取最新；避免陈旧残留。
+            if cur != gs['last_player']:
                 res = check_dahai(shot)
                 if res is not None:
                     tile, tsumogiri, riichi = res
-                    self.dahai_q.put({'type': 'dahai', 'pid': cur, 'tile': tile,
-                                      'tsumogiri': tsumogiri, 'riichi': riichi})
+                    self._keep_latest(self.dahai_q, {'type': 'dahai', 'pid': cur, 'tile': tile,
+                                                     'tsumogiri': tsumogiri, 'riichi': riichi})
 
             # 副露：新副露（吃/碰/暗杠/大明杠）与加杠分别识别，二者互斥。
             # meld 本身就带 type（chi/pon/ankan/daiminkan/kakan），直接入队，
             # main 按 type 分派即可。前置条件同 dahai：current_player != last_player，
-            # 当前玩家一旦打牌就停检（其手番结束、不会再有新副露），避免无谓识别与残留。
-            if cur != gs['last_player'] and self.meld_q.empty():
+            # 当前玩家一旦打牌就停检（其手番结束、不会再有新副露）。meld_q 同样只留最新。
+            if cur != gs['last_player']:
                 meld = check_new_meld(shot) or check_kakan(shot)
                 if meld is not None:
-                    self.meld_q.put(meld)
+                    self._keep_latest(self.meld_q, meld)
 
             time.sleep(POLLING_INTERVAL)
 

@@ -276,6 +276,15 @@ class Game:
             elapsed += POLLING_INTERVAL
         raise TimeoutError('wait_any 超时没有结果')
 
+    @staticmethod
+    def _poll(q, cur=None):
+        """取队列最新事件，队列空则原样返回 cur（保留上轮未消费的值）。
+        dahai_q/tsumo_q/meld_q 在 watcher 端只留最新一项，故这里每轮覆盖即取最新。"""
+        try:
+            return q.get_nowait()
+        except queue.Empty:
+            return cur
+
     def main(self):
         state = self.state
 
@@ -294,29 +303,12 @@ class Game:
         while True:
             player = state['current_player']
             with timed('get_queue'):
-                try:
-                    if meld is None:
-                        meld = self.watcher.meld_q.get_nowait()
-                except queue.Empty:
-                    pass
-                try:
-                    tsumo = self.watcher.tsumo_q.get_nowait()
-                except queue.Empty:
-                    pass
-                try:
-                    if dahai is None:
-                        dahai = self.watcher.dahai_q.get_nowait()
-                except queue.Empty:
-                    pass
-                try:
-                    end = self.watcher.end_q.get_nowait()
-                except queue.Empty:
-                    pass
-
-                try:
-                    change_player = self.watcher.player_q.get_nowait()
-                except queue.Empty:
-                    pass
+                # 全部队列每轮取最新（dahai_q/tsumo_q/meld_q 在 watcher 端只留最新一项）。
+                meld = self._poll(self.watcher.meld_q, meld)
+                dahai = self._poll(self.watcher.dahai_q, dahai)
+                tsumo = self._poll(self.watcher.tsumo_q, tsumo)
+                end = self._poll(self.watcher.end_q, end)
+                change_player = self._poll(self.watcher.player_q, change_player)
             
             # 因为不使用check_dahai_claim
             # 需要专门处理claim阶段，判断切换玩家时是鸣牌还是正常摸牌以及后续流程
@@ -429,7 +421,7 @@ class Game:
                 # 切换到自己时会开始识别tsumo，这里先将tsumo清空，避免上手番的残留
                 tsumo = None
                 change_player = None
-
+                
                 if self.need_open_dora:
                     self.open_dora()
 
