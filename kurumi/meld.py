@@ -126,9 +126,13 @@ def rec_kakan(shot):
             x,y,w,h = get_meld_region(player, melds, i)
             result = check_tiles(shot[y:y+h,x:x+w], player, debug=False)
             if len(result) == 4:
-                # 这里识别到加杠需要改type，
-                meld['type'] = 'kakan'
-                return meld
+                # 这里要复制，不能直接改原meld。
+                kakan_meld = {
+                    'type': 'kakan',
+                    'tile': meld['tile'],
+                    'consumed': meld['consumed']
+                }
+                return kakan_meld
     return None
 
 # 加杠另外单独识别

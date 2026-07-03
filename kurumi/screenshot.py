@@ -15,7 +15,7 @@ if sys.platform == "win32":
     region = (0, 0, 2560, 1440)
     camera.start(target_fps=60)
 
-SHOW_SCREENSHOW = True
+SHOW_SCREENSHOW = False
 JPEG_QUALITY = 95
 img_q = deque(maxlen=500)
 saved_snapshots = {}   # {caller_info: [(buf, caller_info), ...]}，同一调用点再次触发会覆盖，save_img_q 时各存为一个子文件夹
@@ -30,9 +30,8 @@ fps = cap.get(cv2.CAP_PROP_FPS)
 duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps   # 视频总时长（秒）
 
 VIDEO_START_MS = 0       # dev 视频以这一毫秒处作为游标 0
-VIDEO_START_MS = 129000
-VIDEO_END_MS = 135000      # dev 视频跑到这一毫秒即视作结束（None=跑到视频真正结尾）
-# VIDEO_END_MS = 150000  # 例：只跑 129s~150s 这一段，省得等整段视频
+# VIDEO_START_MS = 129000
+VIDEO_END_MS = None      # dev 视频跑到这一毫秒即视作结束（None=跑到视频真正结尾）
 
 # ── 单一游标 ──────────────────────────────────────────────────
 # 全局只有一个游标，代表"当前这一帧"。任何 reader 取帧（_read_source）都只读

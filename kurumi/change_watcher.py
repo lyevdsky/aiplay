@@ -4,7 +4,7 @@ import threading
 import queue
 import time
 import cv2
-from screenshot import get_screenshot
+from screenshot import get_screenshot, save_img_q
 from kyoku import get_active_player
 from hand import check_tsumo
 from kawa import check_dahai
@@ -111,7 +111,7 @@ class ChangeWatcher:
         # watcher 是唯一的游标推进者，取帧(解码)+识别本身即天然节流。生产(摄像头)
         # 下取帧很快，需 sleep 限制 CPU 占用；dev 只睡极短，让游标尽快推进、快速跑完视频。
         def sleep():
-            time.sleep(POLLING_INTERVAL if not IS_DEV else 0)
+            time.sleep(POLLING_INTERVAL if not IS_DEV else 0.05)
     
         while self._running:
             shot = get_screenshot()
@@ -180,7 +180,6 @@ class ChangeWatcher:
             # 当前玩家一旦打牌就停检（其手番结束、不会再有新副露）。meld_q 同样只留最新。
             if cur != gs['last_player']:
                 meld = check_new_meld(shot) or check_kakan(shot)
-                print(meld)
                 if meld is not None:
                     meld['ctx'] = self._ctx(cur, gs['player_info'][cur])   # 有效性 key，供 main 校验
                     self._keep_latest(self.meld_q, meld)

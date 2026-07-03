@@ -231,7 +231,6 @@ class Game:
             })
             player_melds.append({ 'type': 'ankan' })
         elif type == 'kakan':
-            # 注意 加杠返回的是之前碰的副露内容，
             consumed = [meld['tile'], *meld['consumed']]
             num, suit = meld['tile']
             if num == '5' and suit != 'z':
@@ -249,7 +248,10 @@ class Game:
                 'consumed': consumed,
                 'pai': pai
             })
-            meld['type'] = 'kakan'
+            # 更新meld
+            for _meld in player_melds:
+                if _meld['type'] == 'pon' and _meld['tile'] == meld['tile']:
+                    _meld['type'] = 'kakan'
 
     def open_dora(self):
         dora_marker = polling(check_new_dora_marker, POLLING_INTERVAL, timeout = 5)
@@ -286,7 +288,7 @@ class Game:
             return cur
 
     def main(self):
-        INTERVAL_TIME = 0.5
+        INTERVAL_TIME = 0.1
         state = self.state
 
         # 监视线程每局由 start_kyoku 拉起（main 在终局调用 stop 回收），此处不再统一启动
@@ -553,11 +555,10 @@ if __name__ == "__main__":
     game = None
     try:
         game = Game()
-        game.start_with_state(_state_3)
-        game.phase = Phase.Tsumo
+        # game.start_with_state(_state_3)
+        # game.phase = Phase.Tsumo
         game.main()
     except Exception as e:
-        game.watcher.save_img_q()
         save_img_q()
         print_with_color('游戏中止，打印中止时的GAME STATE', 'red')
         print(game.state)
