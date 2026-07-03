@@ -124,7 +124,6 @@ class ChangeWatcher:
             # 被误判成打牌），并阻塞分辨出 hora / ryukyoku 推入 end_q（此局已
             # 结束，watcher 无需再做别的）。end_q 非空则不重复分辨。
             if is_interrupt(shot):
-                print('is_interrupt', True)
                 if self.end_q.empty():
                     while self._running:
                         if is_hora():
