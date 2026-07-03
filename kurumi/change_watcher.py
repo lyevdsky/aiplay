@@ -111,7 +111,7 @@ class ChangeWatcher:
         # watcher 是唯一的游标推进者，取帧(解码)+识别本身即天然节流。生产(摄像头)
         # 下取帧很快，需 sleep 限制 CPU 占用；dev 只睡极短，让游标尽快推进、快速跑完视频。
         def sleep():
-            time.sleep(POLLING_INTERVAL if not IS_DEV else 0.01)
+            time.sleep(POLLING_INTERVAL if not IS_DEV else 0)
     
         while self._running:
             shot = get_screenshot()
@@ -124,6 +124,7 @@ class ChangeWatcher:
             # 被误判成打牌），并阻塞分辨出 hora / ryukyoku 推入 end_q（此局已
             # 结束，watcher 无需再做别的）。end_q 非空则不重复分辨。
             if is_interrupt(shot):
+                print('is_interrupt', True)
                 if self.end_q.empty():
                     while self._running:
                         if is_hora():
@@ -179,26 +180,9 @@ class ChangeWatcher:
             # 当前玩家一旦打牌就停检（其手番结束、不会再有新副露）。meld_q 同样只留最新。
             if cur != gs['last_player']:
                 meld = check_new_meld(shot) or check_kakan(shot)
+                print(meld)
                 if meld is not None:
                     meld['ctx'] = self._ctx(cur, gs['player_info'][cur])   # 有效性 key，供 main 校验
                     self._keep_latest(self.meld_q, meld)
 
             sleep()
-
-    def save_img_q(self):
-        folder_name = './logs/change_watcher/' + datetime.now().strftime("%Y%m%d_%H%M%S")
-        os.makedirs(folder_name, exist_ok=True)
-
-        items = list(img_q)
-        img_q.clear()
-        idx = 0
-        for img in items:
-            filename = os.path.join(folder_name, f"{idx:04d}.jpg")
-            ok, buf = cv2.imencode('.jpg', img)
-            if not ok:
-                print(f"change_watcher: 第 {idx} 帧编码失败，跳过")
-                continue
-            buf.tofile(filename)
-            idx += 1
-
-        print(f"共保存 {idx} 张图片到文件夹 {folder_name}")
