@@ -39,7 +39,6 @@ def check_interrupt():
     if not is_interrupt():
         return None
     
-    print('check_interrupt: True')
     while True:
         hora = is_hora()
         if hora:

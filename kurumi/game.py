@@ -39,12 +39,13 @@ class Phase(Enum):
 # 窗口最大化
 
 def print_with_color(text, color = 'green'):
+    ts = time.strftime('%H:%M:%S')
     if color == 'green':
-        print(f'\033[32m [GAME] {text} \033[0m')
+        print(f'\033[32m {ts} [GAME] {text} \033[0m')
     elif color == 'red':
-        print(f"\033[31m [GAME] {text} \033[0m")
+        print(f"\033[31m {ts} [GAME] {text} \033[0m")
     elif color == 'blue':
-        print(f"\033[34m [AI] {text} \033[0m")
+        print(f"\033[34m {ts} [AI] {text} \033[0m")
 
 print_with_color('正在识别牌局信息...')
 class Game:
@@ -58,10 +59,10 @@ class Game:
         self.need_open_dora = 0
         self.phase = Phase.StartGame
         self.remaining_tsumo = 70
-        # if IS_DEV:
-            # self.bot = None
-        # else:
-        self.bot = Bot()
+        if IS_DEV:
+            self.bot = None
+        else:
+            self.bot = Bot()
         self.listener = listener
         # watcher 永远起：dev/replay 下两个读取者各持独立游标读同一帧源，
         # 复刻生产环境的并行取帧，main 流程不区分 dev/生产。
@@ -363,7 +364,6 @@ class Game:
                 state['current_player'] = player
 
                 if claimed:
-                    print_with_color(f'玩家 {player} 鸣牌')
                     meld = check_new_meld()
                     self.claim(player, meld)
                     if meld['type'] == 'daiminkan':

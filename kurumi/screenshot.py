@@ -29,7 +29,7 @@ _cap_lock = threading.Lock()
 fps = cap.get(cv2.CAP_PROP_FPS)
 duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps   # 视频总时长（秒）
 
-VIDEO_START_MS = 366000       # dev 视频以这一毫秒处作为游标 0
+VIDEO_START_MS = 26000       # dev 视频以这一毫秒处作为游标 0
 # VIDEO_START_MS = 366000
 
 # ── 单一游标 ──────────────────────────────────────────────────
