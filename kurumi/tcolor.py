@@ -9,7 +9,7 @@ def get_rgb(img, x, y):
     return int(r), int(g), int(b)
 
 # img = cv2.imread("./video/ryukyoku.png")
-img = cv2.imread('./error/0403_is_ryukyoku_L19.jpg')
+img = cv2.imread('./error/0099_rec_dahai_L67.png')
 
 
 x, y = 1957, 948

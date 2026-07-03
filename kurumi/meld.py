@@ -21,6 +21,20 @@ ACROSS_NUM = [0, 1]
 REC_PREV_W_H = (200, 250) # w h
 REC_SELF_W_H = (400, 150)
 
+def preprocess_screenshot(shot, player):
+  with timed('preprocess_screenshot'):
+    """按 player 对 screenshot 的特定区域做预处理（增亮 HSV 的 V 通道）。
+    在 shot 的副本上修改并返回，不影响原图（img_q/快照保持原始像素）。"""
+    shot = shot.copy()
+    # 一番街名字的阴影导致亮度变低影响牌面的轮廓识别，这里进行亮度增强
+    if player == 'next':
+        x, y, w, h = 2060, 195, 30, 32
+        roi = shot[y:y+h, x:x+w]
+        hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
+        hsv[:, :, 2] = cv2.add(hsv[:, :, 2], 40)  # V +40，cv2.add 自动饱和到 255
+        shot[y:y+h, x:x+w] = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+    return shot
+
 def computed_next_point(player, melds):
     a = 0
     b = 0
@@ -129,7 +143,9 @@ def rec_new_meld():
     # melds = []
     # player = 'next'
     x,y,w,h = get_meld_region(player, melds, len(melds))
-    img = get_screenshot((x,y,w,h), save=5)
+    shot = get_screenshot(save=5)
+    shot = preprocess_screenshot(shot, player)
+    img = shot[y:y+h, x:x+w]
     # cv2.imshow('img', img)
     # cv2.waitKey()
     result = check_tiles(img, player, debug=False)
@@ -181,14 +197,14 @@ def rec_new_meld():
     
     # print(f'check {player} meld result: ', meld)
     return meld
-# set_gamestate({'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 3, 'dora_markers': ['1m'], 'scores': [21600, 24000, 23500, 30900], 'players': [0, 1, 2, 3], 'position': ['next', 'across', 'prev', 'self'], 'current_player': 1, 'player_to_id': {'self': 3, 'next': 0, 'across': 1, 'prev': 2}, 'oya': 2, 'player_info': [{'kawa_index': 4, 'riichi_index': None, 'melds': [], 'riichi': True}, {'kawa_index': 4, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 5, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 5, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 3})
+# set_gamestate({'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 4, 'dora_markers': ['7s'], 'scores': [27600, 7600, 52000, 12800], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 3, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 3, 'player_info': [{'kawa_index': 10, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 11, 'riichi_index': None, 'riichi': False, 'melds': [{'type': 'pon', 'consumed': ['3z', '3z'], 'tile': '3z'}, {'type': 'chi', 'consumed': ['7p', '6p'], 'tile': '8p'}]}, {'kawa_index': 9, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 11, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'chi', 'consumed': ['3p', '4p'], 'tile': '5p'}]}], 'my_id': 2})
 # for i in range(5):
 #     print(i)
 #     set_debug_screenshot(f'./logs/20260630_232119/snapshot_05_rec_new_meld_L132/000{i}_rec_new_meld_L132.jpg')
 #     res = rec_new_meld()
 #     print(res)
 
-# set_debug_screenshot('./error/0499_rec_new_meld_L13.jpg')
+# set_debug_screenshot('./error/0499_rec_new_meld_L132.png')
 # res = rec_new_meld()
 # print(res)
 # set_debug_screenshot('./error/0497_rec_new_meld_L132.jpg')
