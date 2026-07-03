@@ -149,8 +149,9 @@ def save_img_q(path = None):
     img_q.clear()
     idx = 0
     for img, caller_info in items:
-        # 生成文件名，例如 0001_funcname_L42.jpg
-        filename = os.path.join(folder_name, f"{idx:04d}_{caller_info}.jpg")
+        # 用无损 PNG 保存，保证复现时读到的像素与 live 识别时的原始帧完全一致
+        # （JPEG 有损压缩会让临界牌的轮廓/置信度发生偏移，导致复现不出 live 的识别结果）
+        filename = os.path.join(folder_name, f"{idx:04d}_{caller_info}.png")
         # img.tofile(filename)
         cv2.imwrite(filename, img)
         idx += 1
@@ -162,7 +163,8 @@ def save_img_q(path = None):
         sub_folder = os.path.join(folder_name, f"snapshot_{snap_idx:02d}_{snap_caller}")
         os.makedirs(sub_folder, exist_ok=True)
         for i, (img, caller_info) in enumerate(shots):
-            filename = os.path.join(sub_folder, f"{i:04d}_{caller_info}.jpg")
+            # 同样用无损 PNG，确保快照与 live 原始帧逐像素一致
+            filename = os.path.join(sub_folder, f"{i:04d}_{caller_info}.png")
             cv2.imwrite(filename, img)
             # img.tofile(filename)
         print(f"快照保存 {len(shots)} 张图片到文件夹 {sub_folder}")
