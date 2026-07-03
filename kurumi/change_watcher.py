@@ -11,7 +11,7 @@ from kawa import check_dahai
 from meld import check_new_meld, check_kakan
 from hora import is_interrupt, is_hora, is_ryukyoku
 from gamestate import get_gamestate
-from util import stable_func
+from util import stable_func, timed
 from config import POLLING_INTERVAL, IS_DEV
 from collections import deque
 
@@ -100,11 +100,16 @@ class ChangeWatcher:
             q.put(item)
 
     def _loop(self):
+        # watcher 是唯一的游标推进者，取帧(解码)+识别本身即天然节流。生产(摄像头)
+        # 下取帧很快，需 sleep 限制 CPU 占用；dev 只睡极短，让游标尽快推进、快速跑完视频。
+        def sleep():
+            time.sleep(POLLING_INTERVAL if not IS_DEV else 0.01)
+    
         while self._running:
             shot = get_screenshot()
             img_q.append(shot)
             if shot is None or shot is False:
-                time.sleep(POLLING_INTERVAL)
+                sleep()
                 continue
 
             # 终局中断：一旦进入中断动画，整轮不再识别牌（吃碰杠/终局动画极易
@@ -119,8 +124,8 @@ class ChangeWatcher:
                         if is_ryukyoku():
                             self.end_q.put({'type': 'ryukyoku'})
                             break
-                        time.sleep(0.5)
-                time.sleep(POLLING_INTERVAL)
+                        sleep()
+                sleep()
                 continue
 
             gs = get_gamestate()
@@ -167,7 +172,7 @@ class ChangeWatcher:
                 if meld is not None:
                     self._keep_latest(self.meld_q, meld)
 
-            time.sleep(POLLING_INTERVAL)
+            sleep()
 
     def save_img_q(self):
         folder_name = './logs/change_watcher/' + datetime.now().strftime("%Y%m%d_%H%M%S")

@@ -432,7 +432,7 @@ class Game:
                     self.notify({ 'type': 'reach_accepted', 'actor': self.riichi_to_accepted })
                     self.riichi_to_accepted = None
                     # time sleep 是为了避免立直时放立直棒的手等立直动画，挡住已打牌，错判鸣牌。
-                    time.sleep(0.8)
+                    # time.sleep(0.8)
 
                 # TODO check_dahai_claimed是否有必要呢，因为本来轮到这个玩家后就要一直check_new_meld。
                 # 那何不直接交由后续check来判断是否有鸣牌？问题是能区分明杠和加杠吗？可以区分
