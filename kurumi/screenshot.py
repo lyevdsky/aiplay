@@ -21,7 +21,7 @@ img_q = deque(maxlen=500)
 saved_snapshots = {}   # {caller_info: [(buf, caller_info), ...]}，同一调用点再次触发会覆盖，save_img_q 时各存为一个子文件夹
 _debug_screenshot = None
 
-cap = cv2.VideoCapture("./video/kyo.mp4")
+cap = cv2.VideoCapture("./video/full.mp4")
 # cv2.VideoCapture(底层 ffmpeg)非线程安全：main 与 watcher 并发 set+read
 # 会踩坏解码器状态导致崩溃，故 seek+read 必须整体串行
 _cap_lock = threading.Lock()
@@ -29,7 +29,7 @@ _cap_lock = threading.Lock()
 fps = cap.get(cv2.CAP_PROP_FPS)
 duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps   # 视频总时长（秒）
 
-VIDEO_START_MS = 26000       # dev 视频以这一毫秒处作为游标 0
+VIDEO_START_MS = 0       # dev 视频以这一毫秒处作为游标 0
 # VIDEO_START_MS = 366000
 
 # ── 单一游标 ──────────────────────────────────────────────────

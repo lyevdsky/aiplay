@@ -428,11 +428,10 @@ class Game:
                     continue
                 
                 player = change_player['pid']
-                print_with_color(f'切换至玩家 {player}')
 
                 # 先更新 current_player，watcher 才会按新玩家扫描副露区（meld_q）
                 state['current_player'] = player
-                # 更新玩家，清理上手番的残留 TODO 这里只是清除了main这边的，但没有清理watcher的q，可能会导致main获取上次手番的识别判断
+                # 更新玩家，清理上手番的残留
                 tsumo = None
                 change_player = None
                 dahai = None
