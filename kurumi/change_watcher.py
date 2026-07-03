@@ -99,6 +99,14 @@ class ChangeWatcher:
         if item is not None:
             q.put(item)
 
+    @staticmethod
+    def _ctx(pid, pi):
+        """识别时的关键状态，作为事件的有效性 key：玩家 id + 其牌河进度 kawa_index
+        + 副露类型序列。类型序列同时覆盖「第几个副露」(长度) 与「加杠 pon→kakan」
+        (类型变化)，比单纯 melds 长度更准。main 用当前该玩家的实时状态算出同样的
+        ctx 比较，对不上即为上一手番残留、丢弃。"""
+        return (pid, pi['kawa_index'], tuple(m['type'] for m in pi['melds']))
+
     def _loop(self):
         # watcher 是唯一的游标推进者，取帧(解码)+识别本身即天然节流。生产(摄像头)
         # 下取帧很快，需 sleep 限制 CPU 占用；dev 只睡极短，让游标尽快推进、快速跑完视频。
@@ -149,7 +157,8 @@ class ChangeWatcher:
             if self._current_player == my_id:
                 tile = check_tsumo(shot)
                 if tile is not None:
-                    self._keep_latest(self.tsumo_q, {'type': 'tsumo', 'pid': my_id, 'tile': tile})
+                    self._keep_latest(self.tsumo_q, {'type': 'tsumo', 'tile': tile,
+                                                     'ctx': self._ctx(my_id, gs['player_info'][my_id])})
             else:
                 self._keep_latest(self.tsumo_q)
 
@@ -160,8 +169,9 @@ class ChangeWatcher:
                 res = check_dahai(shot)
                 if res is not None:
                     tile, tsumogiri, riichi = res
-                    self._keep_latest(self.dahai_q, {'type': 'dahai', 'pid': cur, 'tile': tile,
-                                                     'tsumogiri': tsumogiri, 'riichi': riichi})
+                    self._keep_latest(self.dahai_q, {'type': 'dahai', 'tile': tile,
+                                                     'tsumogiri': tsumogiri, 'riichi': riichi,
+                                                     'ctx': self._ctx(cur, gs['player_info'][cur])})
 
             # 副露：新副露（吃/碰/暗杠/大明杠）与加杠分别识别，二者互斥。
             # meld 本身就带 type（chi/pon/ankan/daiminkan/kakan），直接入队，
@@ -170,6 +180,7 @@ class ChangeWatcher:
             if cur != gs['last_player']:
                 meld = check_new_meld(shot) or check_kakan(shot)
                 if meld is not None:
+                    meld['ctx'] = self._ctx(cur, gs['player_info'][cur])   # 有效性 key，供 main 校验
                     self._keep_latest(self.meld_q, meld)
 
             sleep()

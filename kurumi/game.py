@@ -25,11 +25,11 @@ import queue
 def print_with_color(text, color = 'green'):
     ts = time.strftime('%H:%M:%S')
     if color == 'green':
-        print(f'\033[32m {ts} [GAME] {text} \033[0m')
+        print(f'\033[32m [GAME] {text} \033[0m')
     elif color == 'red':
-        print(f"\033[31m {ts} [GAME] {text} \033[0m")
+        print(f"\033[31m [GAME] {text} \033[0m")
     elif color == 'blue':
-        print(f"\033[34m {ts} [AI] {text} \033[0m")
+        print(f"\033[34m [AI] {text} \033[0m")
 
 print_with_color('正在识别牌局信息...')
 class Game:
@@ -310,6 +310,18 @@ class Game:
                 tsumo = self._poll(self.watcher.tsumo_q, tsumo)
                 end = self._poll(self.watcher.end_q, end)
                 change_player = self._poll(self.watcher.player_q, change_player)
+
+                # 丢弃与当前状态对不上的陈旧识别（上一手番残留）：用识别时的 ctx
+                # （玩家 + kawa_index + 副露类型序列）比对当前该玩家的实时 ctx。
+                # 覆盖：换人、打牌后牌河推进、鸣牌后副露数变化、加杠 pon→kakan、
+                # 杠后摸岭上牌位移动。每轮都校验，陈旧识别活不到下一手番。
+                ctx = self.watcher._ctx(player, state['player_info'][player])
+                if tsumo is not None and tsumo['ctx'] != ctx:
+                    tsumo = None
+                if dahai is not None and dahai['ctx'] != ctx:
+                    dahai = None
+                if meld is not None and meld['ctx'] != ctx:
+                    meld = None
             
             # 因为不使用check_dahai_claim
             # 需要专门处理claim阶段，判断切换玩家时是鸣牌还是正常摸牌以及后续流程
@@ -420,10 +432,12 @@ class Game:
 
                 # 先更新 current_player，watcher 才会按新玩家扫描副露区（meld_q）
                 state['current_player'] = player
-                # 切换到自己时会开始识别tsumo，这里先将tsumo清空，避免上手番的残留
+                # 更新玩家，清理上手番的残留 TODO 这里只是清除了main这边的，但没有清理watcher的q，可能会导致main获取上次手番的识别判断
                 tsumo = None
                 change_player = None
-                
+                dahai = None
+                meld = None
+
                 if self.need_open_dora:
                     self.open_dora()
 
