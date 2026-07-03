@@ -180,20 +180,18 @@ def rec_new_meld(shot):
     
     # print(f'check {player} meld result: ', meld)
     return meld
-# set_gamestate({'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 4, 'dora_markers': ['6m'], 'scores': [34000, 18600, 17000, 30400], 'players': [0, 1, 2, 3], 'position': ['prev', 'self', 'next', 'across'], 'current_player': 1, 'player_to_id': {'self': 1, 'next': 2, 'across': 3, 'prev': 0}, 'oya': 3, 'player_info': [{'kawa_index': 3, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 3, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 2, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 3, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 1})
-
+# set_gamestate({'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 3, 'dora_markers': ['1m'], 'scores': [21600, 24000, 23500, 30900], 'players': [0, 1, 2, 3], 'position': ['next', 'across', 'prev', 'self'], 'current_player': 1, 'player_to_id': {'self': 3, 'next': 0, 'across': 1, 'prev': 2}, 'oya': 2, 'player_info': [{'kawa_index': 4, 'riichi_index': None, 'melds': [], 'riichi': True}, {'kawa_index': 4, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 5, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 5, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 3})
 # for i in range(5):
 #     print(i)
-#     set_debug_screenshot(f'./logs/20260629_231436/snapshot_05_rec_new_meld_L132/000{i}_rec_new_meld_L132.jpg')
+#     set_debug_screenshot(f'./logs/20260630_232119/snapshot_05_rec_new_meld_L132/000{i}_rec_new_meld_L132.jpg')
 #     res = rec_new_meld()
 #     print(res)
 
-# set_debug_screenshot('./error/0004_rec_new_meld_L132.jpg')
-# # # # # # # # set_debug_screenshot('./logs/20260617_154527/0009.jpg')
+# set_debug_screenshot('./error/0499_rec_new_meld_L13.jpg')
 # res = rec_new_meld()
 # print(res)
 
-stabled_rec_new_meld = stable_func(rec_new_meld)
+stabled_rec_new_meld = stable_func(rec_new_meld, stable_count=3)
 stabled_rec_kakan = stable_func(rec_kakan)
 
 # 新副露：吃/碰/暗杠/大明杠，扫「下一副露位」识别。
