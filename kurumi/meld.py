@@ -119,13 +119,12 @@ def get_current_player_info():
     return player_pos, melds
 
 # 识别是否存在加杠
-def rec_kakan():
-    shot = get_screenshot(save=5)
+def rec_kakan(shot):
     player, melds = get_current_player_info()
     for i, meld in enumerate(melds):
         if meld['type'] == 'pon':
             x,y,w,h = get_meld_region(player, melds, i)
-            result = check_tiles(shot[y:y+h,x:x+w], player, debug=False)            
+            result = check_tiles(shot[y:y+h,x:x+w], player, debug=False)
             if len(result) == 4:
                 # 这里识别到加杠需要改type，
                 meld['type'] = 'kakan'
@@ -134,7 +133,7 @@ def rec_kakan():
 
 # 加杠另外单独识别
 # 识别当前玩家是否有新副露
-def rec_new_meld():
+def rec_new_meld(shot):
   with timed('rec_new_meld'):
     player, melds = get_current_player_info()
     # melds = [{ 'type': 'chi'}, { 'type': 'pon' }, { 'type': 'chi' }]
@@ -203,38 +202,21 @@ def rec_new_meld():
 #     set_debug_screenshot(f'./logs/20260630_232119/snapshot_05_rec_new_meld_L132/000{i}_rec_new_meld_L132.jpg')
 #     res = rec_new_meld()
 #     print(res)
+# _state_3 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'last_player': 0, 'last_dahai': '4z', 'dora_markers': ['3m', '4s'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 0, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 14, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['2z', '2z'], 'tile': '2z'}, {'type': 'pon', 'consumed': ['1m', '1m'], 'tile': '1m'}, {'type': 'daiminkan'}], 'riichi': False}, {'kawa_index': 12, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 11, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 11, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
+# set_gamestate(_state_3)
+# shot = cv2.imread('./logs/20260703_193724/0060__loop_L117.png')
+# res = rec_kakan(shot)
+# print(res)
+# res = rec_new_meld()
+# print(res)
 
-# set_debug_screenshot('./error/0499_rec_new_meld_L132.png')
-# res = rec_new_meld()
-# print(res)
-# set_debug_screenshot('./error/0497_rec_new_meld_L132.jpg')
-# res = rec_new_meld()
-# print(res)
-# set_debug_screenshot('./error/0498_rec_new_meld_L132.jpg')
-# res = rec_new_meld()
-# print(res)
-# set_debug_screenshot('./error/0499_rec_new_meld_L132.jpg')
-# res = rec_new_meld()
-# print(res)
 stabled_rec_new_meld = stable_func(rec_new_meld, stable_count=3)
-
-def check_new_meld():
-    count = 0
-    while count < (3 / POLLING_INTERVAL):
-        meld = stabled_rec_new_meld()
-        if meld is not None:
-            return meld
-        time.sleep(POLLING_INTERVAL)
-        count += 1
-    else:
-        raise RuntimeError('未识别出新的副露')
-
 stabled_rec_kakan = stable_func(rec_kakan)
-def check_kan():
-    kakan_meld = stabled_rec_kakan()
-    if kakan_meld is not None:
-        return kakan_meld
-    ankan_meld = stabled_rec_new_meld()
-    if ankan_meld is not None:
-        return ankan_meld
-    return None
+
+# 新副露：吃/碰/暗杠/大明杠，扫「下一副露位」识别。
+def check_new_meld(shot):
+    return stabled_rec_new_meld(shot)
+
+# 加杠：既有的碰升级成杠，原地不占新副露位，rec_new_meld 扫不到，需单独识别。
+def check_kakan(shot):
+    return stabled_rec_kakan(shot)

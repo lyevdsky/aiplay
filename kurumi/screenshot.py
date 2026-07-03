@@ -15,13 +15,13 @@ if sys.platform == "win32":
     region = (0, 0, 2560, 1440)
     camera.start(target_fps=60)
 
-SHOW_SCREENSHOW = False
+SHOW_SCREENSHOW = True
 JPEG_QUALITY = 95
 img_q = deque(maxlen=500)
 saved_snapshots = {}   # {caller_info: [(buf, caller_info), ...]}，同一调用点再次触发会覆盖，save_img_q 时各存为一个子文件夹
 _debug_screenshot = None
 
-cap = cv2.VideoCapture("./video/kyo.mp4")
+cap = cv2.VideoCapture("./video/meld_self_kakan.mp4")
 # cv2.VideoCapture(底层 ffmpeg)非线程安全：main 与 watcher 并发 set+read
 # 会踩坏解码器状态导致崩溃，故 seek+read 必须整体串行
 _cap_lock = threading.Lock()
@@ -29,8 +29,10 @@ _cap_lock = threading.Lock()
 fps = cap.get(cv2.CAP_PROP_FPS)
 duration = cap.get(cv2.CAP_PROP_FRAME_COUNT) / fps   # 视频总时长（秒）
 
-VIDEO_START_MS = 26000       # dev 视频以这一毫秒处作为游标 0
-# VIDEO_START_MS = 366000
+VIDEO_START_MS = 0       # dev 视频以这一毫秒处作为游标 0
+VIDEO_START_MS = 129000
+VIDEO_END_MS = 135000      # dev 视频跑到这一毫秒即视作结束（None=跑到视频真正结尾）
+# VIDEO_END_MS = 150000  # 例：只跑 129s~150s 这一段，省得等整段视频
 
 # ── 单一游标 ──────────────────────────────────────────────────
 # 全局只有一个游标，代表"当前这一帧"。任何 reader 取帧（_read_source）都只读
@@ -52,11 +54,19 @@ def advance_cursor():
     全程不随机 seek。仅由 main 侧 get_screenshot 调用。"""
     global _cursor, _current_frame
     _cursor += 1
+    # 用于断点
+    if (_cursor * POLLING_INTERVAL) > 130:
+        pass
     with _cap_lock:
         with timed('video_advance'):
             for _ in range(_FRAME_STEP - 1):
                 cap.grab()                 # 跳过中间帧
             ret, frame = cap.read()        # 只解码这一帧
+            pos_ms = cap.get(cv2.CAP_PROP_POS_MSEC)
+    # 到达设定终点即当作视频结束（返回 False），省得每次都跑完整段视频
+    if VIDEO_END_MS is not None and pos_ms >= VIDEO_END_MS:
+        _current_frame = False
+        return
     _current_frame = frame if ret else False
 
 def set_debug_screenshot(path):
@@ -131,12 +141,6 @@ def get_screenshot(region = None, save = 0):
 
     return shot
 
-def get_raw_frame():
-    """给后台 watcher 线程用的轻量取帧：不入 img_q、不做 region 裁剪、不记录
-    caller 快照、也不推进游标。只读当前游标那一帧，读到与上次相同也无妨。"""
-    with timed('get_raw_frame(watcher)'):
-        return _read_source()
-
 def save_img_q(path = None):
     if path == None:
         folder_name = './logs/' + datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -147,16 +151,20 @@ def save_img_q(path = None):
     # 2. 遍历队列，保存图片
     items = list(img_q)
     img_q.clear()
-    idx = 0
-    for img, caller_info in items:
+    saved = 0
+    for idx, (img, caller_info) in enumerate(items):
+        # 视频结束/取帧失败时入队的是 False/None，跳过但仍占用 idx，
+        # 保证文件名下标与该帧在 img_q 中的位置（即日志里的帧号）严格对齐
+        if img is None or img is False:
+            continue
         # 用无损 PNG 保存，保证复现时读到的像素与 live 识别时的原始帧完全一致
         # （JPEG 有损压缩会让临界牌的轮廓/置信度发生偏移，导致复现不出 live 的识别结果）
         filename = os.path.join(folder_name, f"{idx:04d}_{caller_info}.png")
         # img.tofile(filename)
         cv2.imwrite(filename, img)
-        idx += 1
+        saved += 1
 
-    print(f"共保存 {idx} 张图片到文件夹 {folder_name}")
+    print(f"共保存 {saved} 张图片到文件夹 {folder_name}")
 
     # 3. 保存通过 save 标记的快照，每个快照存到独立子文件夹
     for snap_idx, (snap_caller, shots) in enumerate(saved_snapshots.items()):

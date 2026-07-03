@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>麻将牌面裁剪工具</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, sans-serif; font-size: 14px; color: #222; background: #f5f5f0; padding: 16px; }
+.panel { background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 16px 20px; margin-bottom: 12px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+label { font-size: 13px; color: #666; min-width: 28px; }
+input[type=number] { width: 72px; padding: 5px 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
+input[type=text] { flex: 1; min-width: 120px; padding: 5px 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; }
+input[type=file] { flex: 1; font-size: 13px; }
+.btn { padding: 6px 14px; border-radius: 6px; border: 1px solid #ccc; background: #fff; color: #222; cursor: pointer; font-size: 13px; }
+.btn:hover { background: #f0f0ec; }
+.btn-primary { background: #e8f1fb; color: #185fa5; border-color: #b5d4f4; }
+.btn-primary:hover { opacity: 0.85; }
+.btn-success { background: #eaf3de; color: #3b6d11; border-color: #c0dd97; }
+.btn-success:hover { opacity: 0.85; }
+.canvas-wrap { overflow: auto; border: 1px solid #ddd; border-radius: 8px; background: #e8e8e4; min-height: 200px; display: flex; align-items: center; justify-content: center; }
+#main-canvas { cursor: crosshair; display: block; max-width: 100%; }
+.hint { font-size: 13px; color: #999; }
+.previews { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.preview-item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.preview-item canvas { border: 1px solid #ddd; border-radius: 4px; }
+.preview-item span { font-size: 11px; color: #666; }
+.preview-item .del { font-size: 11px; color: #c0392b; cursor: pointer; }
+.coords { font-size: 12px; color: #666; font-family: monospace; padding: 2px 8px; background: #f0f0ec; border-radius: 4px; }
+h1 { font-size: 18px; font-weight: 500; margin-bottom: 14px; }
+</style>
+</head>
+<body>
+
+<div class="panel">
+  <h1>麻将牌面裁剪工具</h1>
+  <div class="row">
+    <input type="file" id="file-input" accept="image/*">
+    <span class="coords" id="coord-display">x:0 y:0</span>
+  </div>
+  <div class="row">
+    <label>x</label><input type="number" id="rx" value="0" min="0">
+    <label>y</label><input type="number" id="ry" value="0" min="0">
+    <label>w</label><input type="number" id="rw" value="64" min="1">
+    <label>h</label><input type="number" id="rh" value="64" min="1">
+    <button class="btn btn-primary" onclick="applyRegion()">应用坐标</button>
+  </div>
+  <div class="row">
+    <label style="min-width:48px;">文件名</label>
+    <input type="text" id="filename" placeholder="例如 1m">
+    <button class="btn btn-success" onclick="saveCrop()">⬇ 保存裁剪</button>
+    <button class="btn" onclick="clearAll()">清空预览</button>
+  </div>
+  <div class="row">
+    <span class="hint">鼠标拖拽框选区域，或手动填写坐标后点应用 &nbsp;|&nbsp; 文件名数字自动递增</span>
+  </div>
+</div>
+
+<div class="canvas-wrap" id="canvas-wrap">
+  <span style="color:#aaa;font-size:13px;" id="placeholder">请先选择图片</span>
+  <canvas id="main-canvas" style="display:none;"></canvas>
+</div>
+
+<div class="panel" style="margin-top:12px;">
+  <div style="font-size:13px;font-weight:500;margin-bottom:8px;">
+    已保存的裁剪 <span id="save-count" style="color:#888;">(0)</span>
+  </div>
+  <div class="previews" id="previews"></div>
+</div>
+
+<script>
+const canvas = document.getElementById('main-canvas');
+const ctx = canvas.getContext('2d');
+let img = null;
+let dragging = false;
+let startX = 0, startY = 0;
+let region = {x:0, y:0, w:64, h:64};
+let savedCrops = [];
+
+document.getElementById('file-input').onchange = function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  const image = new Image();
+  image.onload = () => {
+    img = image;
+    canvas.width = image.width;
+    canvas.height = image.height;
+    document.getElementById('placeholder').style.display = 'none';
+    canvas.style.display = 'block';
+    draw();
+  };
+  image.src = url;
+};
+
+function getCanvasPos(e) {
+  const r = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / r.width;
+  const scaleY = canvas.height / r.height;
+  return {
+    x: Math.round((e.clientX - r.left) * scaleX),
+    y: Math.round((e.clientY - r.top) * scaleY)
+  };
+}
+
+canvas.addEventListener('mousemove', e => {
+  const pos = getCanvasPos(e);
+  document.getElementById('coord-display').textContent = `x:${pos.x} y:${pos.y}`;
+  if (dragging) {
+    const rx = Math.min(startX, pos.x);
+    const ry = Math.min(startY, pos.y);
+    const rw = Math.abs(pos.x - startX) || 1;
+    const rh = Math.abs(pos.y - startY) || 1;
+    region = {x:rx, y:ry, w:rw, h:rh};
+    syncInputs();
+    draw();
+  }
+});
+
+canvas.addEventListener('mousedown', e => {
+  const pos = getCanvasPos(e);
+  startX = pos.x;
+  startY = pos.y;
+  dragging = true;
+});
+
+canvas.addEventListener('mouseup', () => { dragging = false; });
+canvas.addEventListener('mouseleave', () => { dragging = false; });
+
+function syncInputs() {
+  document.getElementById('rx').value = region.x;
+  document.getElementById('ry').value = region.y;
+  document.getElementById('rw').value = region.w;
+  document.getElementById('rh').value = region.h;
+}
+
+function applyRegion() {
+  region = {
+    x: parseInt(document.getElementById('rx').value) || 0,
+    y: parseInt(document.getElementById('ry').value) || 0,
+    w: parseInt(document.getElementById('rw').value) || 64,
+    h: parseInt(document.getElementById('rh').value) || 64,
+  };
+  draw();
+}
+
+function draw() {
+  if (!img) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(img, 0, 0);
+  ctx.fillStyle = 'rgba(226,75,74,0.10)';
+  ctx.fillRect(region.x, region.y, region.w, region.h);
+  ctx.strokeStyle = '#E24B4A';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 3]);
+  ctx.strokeRect(region.x, region.y, region.w, region.h);
+  ctx.setLineDash([]);
+}
+
+function saveCrop() {
+  if (!img) { alert('请先选择图片'); return; }
+  const name = document.getElementById('filename').value.trim() || `crop_${savedCrops.length + 1}`;
+  const offscreen = document.createElement('canvas');
+  offscreen.width = region.w;
+  offscreen.height = region.h;
+  const oc = offscreen.getContext('2d');
+  oc.drawImage(img, region.x, region.y, region.w, region.h, 0, 0, region.w, region.h);
+  const dataUrl = offscreen.toDataURL('image/png');
+
+  const a = document.createElement('a');
+  a.href = dataUrl;
+  a.download = name + '.png';
+  a.click();
+
+  savedCrops.push({name, dataUrl});
+  renderPreviews();
+
+  // 文件名数字自动递增
+  const fn = document.getElementById('filename');
+  const match = fn.value.match(/^([^\d]*)(\d+)([^\d]*)$/);
+  if (match) {
+    fn.value = match[1] + (parseInt(match[2]) + 1) + match[3];
+  }
+}
+
+function renderPreviews() {
+  const container = document.getElementById('previews');
+  document.getElementById('save-count').textContent = `(${savedCrops.length})`;
+  container.innerHTML = '';
+  savedCrops.forEach((item, i) => {
+    const div = document.createElement('div');
+    div.className = 'preview-item';
+    const c = document.createElement('canvas');
+    c.width = 56; c.height = 56;
+    const pc = c.getContext('2d');
+    const tempImg = new Image();
+    tempImg.onload = () => pc.drawImage(tempImg, 0, 0, 56, 56);
+    tempImg.src = item.dataUrl;
+    const nameSpan = document.createElement('span');
+    nameSpan.textContent = item.name;
+    const delSpan = document.createElement('span');
+    delSpan.className = 'del';
+    delSpan.textContent = '删除';
+    delSpan.onclick = () => { savedCrops.splice(i, 1); renderPreviews(); };
+    div.appendChild(c); div.appendChild(nameSpan); div.appendChild(delSpan);
+    container.appendChild(div);
+  });
+}
+
+function clearAll() {
+  savedCrops = [];
+  renderPreviews();
+}
+</script>
+</body>
+</html>

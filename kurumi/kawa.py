@@ -49,7 +49,7 @@ def crop_kawa_tile(player, pos, riichi_index = None):
         # return cv2.rotate(screenshot[y:y+h, x:x+w], cv2.ROTATE_90_COUNTERCLOCKWISE)
     return x,y,w,h
 
-def rec_dahai(player, pos, riichi_index, debug=False):
+def rec_dahai(shot, player, pos, riichi_index, debug=False):
   with timed('rec_dahai'):
     x,y,w,h = crop_kawa_tile(player, pos, riichi_index)
 
@@ -64,7 +64,7 @@ def rec_dahai(player, pos, riichi_index, debug=False):
     else:
         h = h + 30
 
-    img = get_screenshot((x,y,w,h), save=100)
+    img = shot[y:y+h, x:x+w]
     result = check_tile(img, player, return_dict=True, debug=debug)
     # print(result)
     if result is None:
@@ -106,13 +106,13 @@ def crop_kawa_all_tiles(player):
     return tiles
 
 # dahai 和 kakan ankan hora要同时check，所以这里不使用while True阻塞
-def _check_dahai():
+def _check_dahai(shot=None):
     gamestate = get_gamestate()
     position = gamestate['position']
     player_pos = position[gamestate['current_player']]
     player_info = gamestate['player_info'][gamestate['current_player']]
 
-    result = rec_dahai(player_pos, player_info['kawa_index'], player_info['riichi_index'])
+    result = rec_dahai(shot, player_pos, player_info['kawa_index'], player_info['riichi_index'])
     if result is not None:
         tile, tsumogiri, riichi = result
         return tile, tsumogiri, riichi
@@ -126,7 +126,8 @@ def check_dahai_claimed():
     player_pos = position[gamestate['current_player']]
     player_info = gamestate['player_info'][gamestate['current_player']]
 
-    result = rec_dahai(player_pos, player_info['kawa_index'], player_info['riichi_index'], debug=False)
+    shot = get_screenshot(save=5)
+    result = rec_dahai(shot, player_pos, player_info['kawa_index'], player_info['riichi_index'], debug=False)
     return result is None
 
 # set_debug_screenshot('./error/0099_rec_dahai_L67.png')

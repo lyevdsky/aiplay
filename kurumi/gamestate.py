@@ -1,8 +1,26 @@
+from enum import Enum
+
+
+class Phase(Enum):
+    StartKyoku = 0
+    Dahai = 1
+    Tsumo = 2
+    Claim = 3
+    Hora = 4
+    Ryukyoku = 5
+    EndKyoku = 6
+    EndGame = 7
+    StartGame = 8
+    Unknown = 9
+
 gamestate = {
     "honba": 0,
     "kyotaku": 0,
     "bakaze": 'E',
     "kyoku": 1,
+    "phase": None,
+    "last_player": None,
+    "last_dahai": None,
     "dora_markers": [],
     "scores": [25000, 25000, 25000, 25000],
     "players": [0, 1, 2, 3],
@@ -65,6 +83,9 @@ def init_gamestate():
     gamestate["position"] = ["self", "next", "across", "prev"]
     gamestate["current_player"] = 0
     gamestate["oya"] = 0
+    gamestate["phase"] = None       # 当前阶段（Phase 枚举），由 main 写，watcher 读作 check 前置条件
+    gamestate["last_player"] = None # 上一个打牌的玩家；watcher 靠 current_player != last_player 判断当前玩家是否已打牌
+    gamestate["last_dahai"] = None  # 上一张打出的牌，供 claim 构造鸣牌事件
     gamestate["player_info"] = [
         {
             "kawa_index": 0, # 当前下一张打牌在牌河显示的位置，不包括被鸣的牌
