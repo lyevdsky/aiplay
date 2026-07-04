@@ -20,7 +20,7 @@ ACROSS_NUM = [0, 1]
 
 REC_PREV_W_H = (200, 250) # w h
 REC_SELF_W_H = (400, 150)
-
+REC_ACROSS_W_H = (300, 100)
 def preprocess_screenshot(shot, player):
   with timed('preprocess_screenshot'):
     """按 player 对 screenshot 的特定区域做预处理（增亮 HSV 的 V 通道）。
@@ -91,9 +91,9 @@ def get_meld_region(player, melds, index):
 
     elif player == 'across':
         if index >= len(melds):
-            region = (x, y, REC_SELF_W_H[0], REC_SELF_W_H[1])
+            region = (x, y, REC_ACROSS_W_H[0], REC_ACROSS_W_H[1])
         else:
-            region = (x, y, x2 - x, REC_SELF_W_H[1])
+            region = (x, y, x2 - x, REC_ACROSS_W_H[1])
 
     elif player == 'next':
         if index >= len(melds):
@@ -146,11 +146,8 @@ def rec_new_meld(shot):
     # melds = []
     # player = 'next'
     x,y,w,h = get_meld_region(player, melds, len(melds))
-    shot = get_screenshot(save=5)
     shot = preprocess_screenshot(shot, player)
     img = shot[y:y+h, x:x+w]
-    # cv2.imshow('img', img)
-    # cv2.waitKey()
     result = check_tiles(img, player, debug=False)
     # print(result)
     meld = None
@@ -200,7 +197,7 @@ def rec_new_meld(shot):
     
     # print(f'check {player} meld result: ', meld)
     return meld
-# set_gamestate({'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 4, 'dora_markers': ['7s'], 'scores': [27600, 7600, 52000, 12800], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 3, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 3, 'player_info': [{'kawa_index': 10, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 11, 'riichi_index': None, 'riichi': False, 'melds': [{'type': 'pon', 'consumed': ['3z', '3z'], 'tile': '3z'}, {'type': 'chi', 'consumed': ['7p', '6p'], 'tile': '8p'}]}, {'kawa_index': 9, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 11, 'riichi': False, 'riichi_index': None, 'melds': [{'type': 'chi', 'consumed': ['3p', '4p'], 'tile': '5p'}]}], 'my_id': 2})
+# set_gamestate({'honba': 1, 'kyotaku': 0, 'bakaze': 'S', 'kyoku': 4, 'last_player': 2, 'last_dahai': '7z', 'dora_markers': ['9m'], 'scores': [55800, 18900, 7100, 18200], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 0, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 3, 'player_info': [{'kawa_index': 7, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 7, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 6, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 7, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 2})
 # for i in range(5):
 #     print(i)
 #     set_debug_screenshot(f'./logs/20260630_232119/snapshot_05_rec_new_meld_L132/000{i}_rec_new_meld_L132.jpg')
@@ -208,10 +205,14 @@ def rec_new_meld(shot):
 #     print(res)
 # _state_3 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'last_player': 0, 'last_dahai': '4z', 'dora_markers': ['3m', '4s'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 0, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 14, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['2z', '2z'], 'tile': '2z'}, {'type': 'pon', 'consumed': ['1m', '1m'], 'tile': '1m'}, {'type': 'daiminkan'}], 'riichi': False}, {'kawa_index': 12, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 11, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 11, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
 # set_gamestate(_state_3)
+
+# shot = cv2.imread('./error/0001_rec_new_meld_L149.png')
 # shot = cv2.imread('./logs/20260703_193724/0060__loop_L117.png')
 # res = rec_kakan(shot)
 # print(res)
-# res = rec_new_meld()
+# cv2.imshow('shot', shot)
+# cv2.waitKey()
+# res = rec_new_meld(shot)
 # print(res)
 
 stabled_rec_new_meld = stable_func(rec_new_meld, stable_count=3)

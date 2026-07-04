@@ -36,13 +36,13 @@ def save_error_img(img, prefix='z5'):
 if IS_DEV:
     model = None
 else:
-    model = YOLO("./ref/yolo/best.pt")
+    model = YOLO("./ref/yolo/best_260704.pt")
 
 def get_model():
     global model
     if model is None:
         # model = YOLO("/Users/weilong/code/mjai/mahjong-game/runs/classify/mahjong/weights/best.pt")
-        model = YOLO("./ref/yolo/best.pt")
+        model = YOLO("./ref/yolo/best_260704.pt")
     return model
 
 # 再次校验5z
@@ -84,6 +84,7 @@ def predict_tile(img, threshold = 0.8, debug=False):
     if debug:
         print(f'predict_tile: ({name},{conf:.2f})')
         if conf > 0.7 and conf < 0.8:
+            print('predict_tile_error: save img ./logs/error/1.png')
             cv2.imwrite('./logs/error/1.png', img)
 
     if conf > threshold:
@@ -313,7 +314,7 @@ def check_tiles(img, player = 'self', type=TileType.Meld, threshold=0.8, debug=F
     return result
 
 
-# img = cv2.imread('./logs/error/yolo_6p2.png')
+# img = cv2.imread('./error/crop_1.png')
 # predict_tile(img, debug=True)
 # x,y,w,h = (1612,433,104,78)
 # img = img[y:y+h,x:x+w]

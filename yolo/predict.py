@@ -2,7 +2,7 @@
 from ultralytics import YOLO
 import cv2
 
-model = YOLO("../runs/classify/mahjong2/weights/best.pt")
+model = YOLO("../runs/classify/mahjong/weights/best.pt")
 
 def predict_tile(img):
     """
@@ -19,6 +19,8 @@ def predict_tile(img):
     return name, conf
 
 # 测试
-img = cv2.imread("./hard_examples/z5/hard_001.png")
+img = cv2.imread("../kurumi/error/1.png")
+cv2.imshow('img', img)
+cv2.waitKey(0)
 name, conf = predict_tile(img)
 print(f"识别结果: {name}  置信度: {conf:.2%}")

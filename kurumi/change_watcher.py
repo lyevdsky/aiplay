@@ -90,6 +90,7 @@ class ChangeWatcher:
 
     @staticmethod
     def _keep_latest(q, item=None):
+        # TODO 将queue的put记录保存下来。
         """把队列刷成「只含最新一项」：先清空，item 非 None 再放入。
         用于 tsumo_q——不断覆盖更新，main 取到的永远是最近一次识别结果。"""
         try:
