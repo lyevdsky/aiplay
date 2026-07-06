@@ -18,7 +18,7 @@ SELF_NUM = [0, 1]
 ACROSS_POINTS = [(495, 30), (562, 30)]
 ACROSS_NUM = [0, 1]
 
-REC_PREV_W_H = (200, 250) # w h
+REC_PREV_W_H = (200, 280) # w h
 REC_SELF_W_H = (400, 150)
 REC_ACROSS_W_H = (300, 100)
 def preprocess_screenshot(shot, player):
@@ -197,23 +197,6 @@ def rec_new_meld(shot):
     
     # print(f'check {player} meld result: ', meld)
     return meld
-# set_gamestate({'honba': 1, 'kyotaku': 0, 'bakaze': 'S', 'kyoku': 4, 'last_player': 2, 'last_dahai': '7z', 'dora_markers': ['9m'], 'scores': [55800, 18900, 7100, 18200], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 0, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 3, 'player_info': [{'kawa_index': 7, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 7, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 6, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 7, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 2})
-# for i in range(5):
-#     print(i)
-#     set_debug_screenshot(f'./logs/20260630_232119/snapshot_05_rec_new_meld_L132/000{i}_rec_new_meld_L132.jpg')
-#     res = rec_new_meld()
-#     print(res)
-# _state_3 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'last_player': 0, 'last_dahai': '4z', 'dora_markers': ['3m', '4s'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 0, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 14, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['2z', '2z'], 'tile': '2z'}, {'type': 'pon', 'consumed': ['1m', '1m'], 'tile': '1m'}, {'type': 'daiminkan'}], 'riichi': False}, {'kawa_index': 12, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 11, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 11, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
-# set_gamestate(_state_3)
-
-# shot = cv2.imread('./error/0001_rec_new_meld_L149.png')
-# shot = cv2.imread('./logs/20260703_193724/0060__loop_L117.png')
-# res = rec_kakan(shot)
-# print(res)
-# cv2.imshow('shot', shot)
-# cv2.waitKey()
-# res = rec_new_meld(shot)
-# print(res)
 
 stabled_rec_new_meld = stable_func(rec_new_meld, stable_count=3)
 stabled_rec_kakan = stable_func(rec_kakan)
@@ -225,3 +208,21 @@ def check_new_meld(shot):
 # 加杠：既有的碰升级成杠，原地不占新副露位，rec_new_meld 扫不到，需单独识别。
 def check_kakan(shot):
     return stabled_rec_kakan(shot)
+
+# set_gamestate({'honba': 1, 'kyotaku': 0, 'bakaze': 'S', 'kyoku': 4, 'last_player': 2, 'last_dahai': '7z', 'dora_markers': ['9m'], 'scores': [55800, 18900, 7100, 18200], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 0, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 3, 'player_info': [{'kawa_index': 7, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 7, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 6, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 7, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 2})
+# for i in range(5):
+#     print(i)
+#     set_debug_screenshot(f'./logs/20260630_232119/snapshot_05_rec_new_meld_L132/000{i}_rec_new_meld_L132.jpg')
+#     res = rec_new_meld()
+#     print(res)
+# _state_3 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'last_player': 0, 'last_dahai': '4z', 'dora_markers': ['3m', '4s'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 0, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 14, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['2z', '2z'], 'tile': '2z'}, {'type': 'pon', 'consumed': ['1m', '1m'], 'tile': '1m'}, {'type': 'daiminkan'}], 'riichi': False}, {'kawa_index': 12, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 11, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 11, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
+# set_gamestate(_state_3)
+
+# shot = cv2.imread('./error/0344__loop_L152.png')
+# shot = cv2.imread('./logs/20260703_193724/0060__loop_L117.png')
+# res = rec_kakan(shot)
+# print(res)
+# cv2.imshow('shot', shot)
+# cv2.waitKey()
+# res = rec_new_meld(shot)
+# print(res)

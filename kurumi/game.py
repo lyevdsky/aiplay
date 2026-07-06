@@ -477,6 +477,7 @@ class Game:
                 self.phase = Phase.EndKyoku
 
             elif self.phase == Phase.Ryukyoku:
+                # TODO 九种九牌流局后，太快重开了，wait new kyoku导致识别到流局时的状态为下一局开始了
                 print_with_color('流局')
                 self.watcher.stop()
                 self.phase = Phase.EndKyoku
