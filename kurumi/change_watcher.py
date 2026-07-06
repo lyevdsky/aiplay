@@ -50,8 +50,43 @@ class ChangeWatcher:
         self._running = False
         self._thread = None
 
+        # 生产环境日志：给每个队列的 put 包一层，记录「每一次入队」（不带帧号，
+        # 带墙钟时刻），save_log 落盘。含 _keep_latest 的覆盖写也会被记录。
+        self._log = []
+        for q, name in ((self.player_q, 'player_change'), (self.tsumo_q, 'tsumo'),
+                        (self.dahai_q, 'dahai'), (self.meld_q, 'meld'), (self.end_q, 'end')):
+            self._wrap_put(q, name)
+
         # 线程私有的去抖实例，避免与主流程共用 stable_func 闭包状态
         self._stable_active = stable_func(get_active_player)
+
+    def _wrap_put(self, q, name):
+        """包裹队列实例的 put：入队前把 '时刻 [队列名] 事件' 追加进 self._log。"""
+        orig_put = q.put
+
+        def put(item, *args, **kwargs):
+            ts = datetime.now().strftime('%H:%M:%S.%f')[:-3]
+            self._log.append(f'{ts} [{name}] {item}')
+            return orig_put(item, *args, **kwargs)
+
+        q.put = put
+
+    def save_log(self, path=None):
+        """把本 watcher 记录的所有队列 put 落盘到 logs/change_watcher/时间戳.log
+        （每条形如 'HH:MM:SS.mmm [队列名] {事件}'），落盘后清空记录。"""
+        if path is None:
+            folder = './logs/change_watcher'
+            os.makedirs(folder, exist_ok=True)
+            path = os.path.join(folder, datetime.now().strftime('%Y-%m-%d_%H-%M-%S') + '.log')
+        else:
+            os.makedirs(os.path.dirname(path) or '.', exist_ok=True)
+        lines = list(self._log)
+        self._log.clear()
+        with open(path, 'w', encoding='utf-8') as f:
+            for line in lines:
+                f.write(line + '\n')
+        print(f'change_watcher: 保存 {len(lines)} 条 put 记录到 {path}')
+        return path
 
     def reset(self, current_player, player_to_id):
         """新一局开始时由主流程调用，设置手番基准。线程是每局一条，
@@ -90,7 +125,6 @@ class ChangeWatcher:
 
     @staticmethod
     def _keep_latest(q, item=None):
-        # TODO 将queue的put记录保存下来。
         """把队列刷成「只含最新一项」：先清空，item 非 None 再放入。
         用于 tsumo_q——不断覆盖更新，main 取到的永远是最近一次识别结果。"""
         try:

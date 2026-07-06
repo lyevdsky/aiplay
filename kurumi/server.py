@@ -86,6 +86,7 @@ def run_one_game():
     except Exception as e:
         send_message({ type: 'error' })
         try:
+            game.watcher.save_log()
             save_img_q()
         except Exception as save_err:
             print(f"[SERVER] 存图失败: {save_err}")
