@@ -356,6 +356,7 @@ class Game:
                 elif tsumo is not None:
                     self.phase = Phase.Tsumo
                 elif dahai is not None:
+                    # TODO lastPlayer 不是上一玩家说明有副露，这里如果没有先识别出副露可以直接抛出异常。
                     # unknown阶段识别出dahai，说明是非自家正常摸牌后打牌，先补上摸牌阶段
                     self.phase = Phase.Tsumo
                 elif end is not None:
@@ -537,12 +538,20 @@ class Game:
         for e in self.mjai:
             str = json.dumps(e)
             print(str)
+    
+    def stop():
+        # TODO
+        pass
+    
+game = None
 
 def on_press(key):
     if key == keyboard.Key.f1:
         print_with_color('按下了F1，保存最近截图', 'red')
         # 这里可以放置你的 F1 功能逻辑
         save_img_q()
+        game.stop()
+        game.watcher.save_log()
     elif key == keyboard.Key.f2:
         print_with_color('按下了F2，保存日志', 'red')
         save_log('按下F2手动保存')
@@ -551,13 +560,12 @@ listener = keyboard.Listener(on_press=on_press)
 listener.start()
 _state_3 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'last_player': 0, 'last_dahai': '4z', 'dora_markers': ['3m', '4s'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 0, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 14, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['2z', '2z'], 'tile': '2z'}, {'type': 'pon', 'consumed': ['1m', '1m'], 'tile': '1m'}, {'type': 'daiminkan'}], 'riichi': False}, {'kawa_index': 12, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 11, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 11, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
 _state_1 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 2, 'dora_markers': ['4s'], 'scores': [23000, 24500, 24500, 28000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 0, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 1, 'player_info': [{'kawa_index': 7, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 8, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 8, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 8, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
-_state_2 = {'honba': 2, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 2, 'dora_markers': ['1p'], 'scores': [43000, 33900, 19300, 3800], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 2, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 1, 'player_info': [{'kawa_index': 9, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 10, 'riichi_index': None, 'riichi': False, 'melds': [{'type': 'pon', 'consumed': ['1z', '1z'], 'tile': '1z'}]}, {'kawa_index': 10, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 9, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
+_state_2 = {'honba': 2, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 3, 'dora_markers': ['1p'], 'scores': [43000, 33900, 19300, 3800], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 2, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 2, 'player_info': [{'kawa_index': 1, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 1, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 1, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 1, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
 if __name__ == "__main__":
-    game = None
     try:
         game = Game()
-        # game.start_with_state(_state_3)
-        # game.phase = Phase.Tsumo
+        game.start_with_state(_state_2)
+        game.phase = Phase.Tsumo
         game.main()
     except Exception as e:
         save_img_q()

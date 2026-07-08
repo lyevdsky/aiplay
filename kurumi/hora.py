@@ -16,6 +16,7 @@ def is_hora():
     return bool
 
 def is_ryukyoku():
+    # TODO 流局判断不准确，一个长和牌动画后，再展示ron动作。
     screenshot = get_screenshot(CONFIRM_REGION, save=5)
     ratio = compute_mask_ratio(screenshot, CONFIRM_BG_HSV)
     ratio2 = compute_mask_ratio(screenshot, CONFIRM_TEXT_HSV)

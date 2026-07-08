@@ -1,4 +1,4 @@
-IS_DEV = False
+IS_DEV = True
 POLLING_INTERVAL = 0.1 if not IS_DEV else 0.05
 
 # color
