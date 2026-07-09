@@ -21,6 +21,7 @@ loop = None
 start_event = threading.Event()   # API 置位 -> 主线程开始一局
 status = "idle"                   # idle | running | error
 last_error = None                 # 最近一次异常信息
+current_game = None               # 当前正在跑的 Game 实例（供 stop / save 接口用）
 state_lock = threading.Lock()
 
 
@@ -39,7 +40,6 @@ async def websocket_endpoint(websocket: WebSocket):
     finally:
         clients.remove(websocket)
 
-# TODO 退出，中断game
 @app.post("/game/start")
 def game_start():
     with state_lock:
@@ -47,6 +47,34 @@ def game_start():
             return {"ok": False, "status": status, "msg": "游戏已在运行"}
         start_event.set()
         return {"ok": True, "status": "starting"}
+
+
+@app.post("/game/stop")
+def game_stop():
+    """中断当前对局：置停止标志让 game.main 下一轮退出、回收 watcher，
+    supervisor 随后自动回到 idle。没有在跑的游戏则无操作。"""
+    with state_lock:
+        game = current_game if status == "running" else None
+    if game is None:
+        return {"ok": False, "status": status, "msg": "当前没有在运行的游戏"}
+    game.stop()
+    return {"ok": True, "status": "stopping"}
+
+
+@app.post("/game/save")
+def game_save():
+    """保存现场：把 watcher 的每次 put 记录与最近截图落盘，便于事后排查。
+    不中断游戏，可在对局进行中随时调用。"""
+    with state_lock:
+        game = current_game
+    if game is None:
+        return {"ok": False, "status": status, "msg": "当前没有在运行的游戏"}
+    try:
+        log_path = game.watcher.save_log()
+        save_img_q()
+    except Exception as e:
+        return {"ok": False, "msg": f"保存失败: {e}"}
+    return {"ok": True, "log": log_path}
 
 
 @app.get("/game/status")
@@ -78,9 +106,12 @@ def _set_status(new_status, error=None):
 
 def run_one_game():
     """在主线程跑一局，异常被捕获后存图并记录，不向上抛出。"""
+    global current_game
     game = None
     try:
         game = Game(listener=lambda data: send_message(data))
+        with state_lock:
+            current_game = game
         print('run one game')
         game.main()
     except Exception as e:
@@ -101,6 +132,8 @@ def run_one_game():
         # 无论正常结束还是异常中止，都回收本局的 watcher 线程，
         if game is not None:
             game.watcher.stop()
+        with state_lock:
+            current_game = None
     return None
 
 

@@ -51,6 +51,7 @@ class Game:
         # watcher 永远起：dev/replay 下两个读取者各持独立游标读同一帧源，
         # 复刻生产环境的并行取帧，main 流程不区分 dev/生产。
         self.watcher = ChangeWatcher()
+        self._running = True   # main 循环开关；stop() 置 False 让其退出
 
     @property
     def phase(self):
@@ -303,7 +304,7 @@ class Game:
         end = None
         rec_start_time = None # 开始识别dahai，tsumo等的开始时间，用于判断是否超时异常。 不过先不写了，可以主动ctrl+c终止。
         # 后续因为 没有了wait，polling。 而是while的每轮循环都会check。所以已经可以实现中断了。
-        while True:
+        while self._running:
             player = state['current_player']
             with timed('get_queue'):
                 # 全部队列每轮取最新（dahai_q/tsumo_q/meld_q 在 watcher 端只留最新一项）。
@@ -356,7 +357,16 @@ class Game:
                 elif tsumo is not None:
                     self.phase = Phase.Tsumo
                 elif dahai is not None:
-                    # TODO lastPlayer 不是上一玩家说明有副露，这里如果没有先识别出副露可以直接抛出异常。
+                    # 正常轮转下当前 player 的上家恒为 (player-1)%4（id 空间里手番按 +1 前进）。
+                    # last_player 不是上家，说明这一手番是被副露抢来的；可这里走到 dahai 分支
+                    # 意味着 meld 没被先识别出来——漏识别了副露，直接抛异常暴露问题，
+                    # 避免把「副露后打牌」错当成「正常摸牌后打牌」补错摸牌阶段。
+                    if self.last_player is not None and self.last_player != (player - 1) % 4:
+                        raise RuntimeError(
+                            f'Unknown 阶段直接识别到打牌，但 last_player({self.last_player}) '
+                            f'不是 player({player}) 的上家 {(player - 1) % 4}，'
+                            f'说明有副露未被识别'
+                        )
                     # unknown阶段识别出dahai，说明是非自家正常摸牌后打牌，先补上摸牌阶段
                     self.phase = Phase.Tsumo
                 elif end is not None:
@@ -367,9 +377,6 @@ class Game:
                     continue
 
             if self.phase == Phase.Tsumo:
-                # TODO 校验
-                # if (self.last_player + 1) % 4 != player:
-                #     raise RuntimeError('没有鸣牌的情况下并没有正确轮到下一位玩家')
                 if player == state['my_id']:
                     if tsumo is not None:
                         tile = tsumo['tile']
@@ -447,23 +454,7 @@ class Game:
                     print('reach_accept')
                     self.notify({ 'type': 'reach_accepted', 'actor': self.riichi_to_accepted })
                     self.riichi_to_accepted = None
-                    # time sleep 是为了避免立直时放立直棒的手等立直动画，挡住已打牌，错判鸣牌。
-                    # time.sleep(0.8)
-
-                # TODO check_dahai_claimed是否有必要呢，因为本来轮到这个玩家后就要一直check_new_meld。
-                # 那何不直接交由后续check来判断是否有鸣牌？问题是能区分明杠和加杠吗？可以区分
-                # 需要注意kawa_index 可能需要先+1，如果判断是鸣牌，则需要last_plaer的kawa_index - 1，
-                # 好处是少了一次rec_dahai，判断鸣牌更准确。不容易因各种原因误判鸣牌
-                # 坏处是如果因为bug导致跳过了一个玩家打牌,应该raise<没有鸣牌的情况下并没有正确轮到下一位玩家>,却没有raise。是否应该检查是否正常顺序。然后raise？
-                # 即是好处，又是坏处的地方就是因为没有了check_new_meld的while循环，而是和dahai阶段一样check_dahai和check_new_meld的轮流check，
-                # 将check_dahai 提前了，但是感觉除了增加了check_dahai的次数没什么作用。因为提不提前都能正确判断dahai。
-                # 因为现在主要的问题是立直动画导致的rec_dahai的延迟，导致的后续识别问题。
-
-                # 不再用 check_dahai_claimed 判断是否被鸣：鸣牌必被 watcher 的 check_new_meld
-                # 捕获并入 meld_q。先简单地 sleep 1s 给 watcher 识别时间，再看 meld_q 有无副露。
-                # TODO: 后续把「取队列判断」上移到与 self.phase== 同级，由队列直接驱动 phase 设置；
-                #       届时 kawa_index 改为「先增后减」（先假设未鸣 +1，若判定被鸣再 -1）。
-                # time.sleep(1)
+                    
                 self.state['player_info'][self.last_player]['kawa_index'] += 1
                 self.phase = Phase.Unknown
 
@@ -539,9 +530,12 @@ class Game:
             str = json.dumps(e)
             print(str)
     
-    def stop():
-        # TODO
-        pass
+    def stop(self):
+        """停止游戏：置停止标志让 main 循环下一轮退出，并回收 watcher 线程。
+        由 F1 热键 / 外部调用触发。watcher 的 put 记录不清空，随后可调
+        watcher.save_log() 落盘。可重复调用（watcher.stop 自身幂等）。"""
+        self._running = False
+        self.watcher.stop()
     
 game = None
 
@@ -549,8 +543,8 @@ def on_press(key):
     if key == keyboard.Key.f1:
         print_with_color('按下了F1，保存最近截图', 'red')
         # 这里可以放置你的 F1 功能逻辑
-        save_img_q()
         game.stop()
+        save_img_q()
         game.watcher.save_log()
     elif key == keyboard.Key.f2:
         print_with_color('按下了F2，保存日志', 'red')
