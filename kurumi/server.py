@@ -113,25 +113,15 @@ def run_one_game():
         with state_lock:
             current_game = game
         print('run one game')
-        game.main()
+        game.start()
     except Exception as e:
-        send_message({ type: 'error' })
-        try:
-            game.watcher.save_log()
-            save_img_q()
-        except Exception as save_err:
-            print(f"[SERVER] 存图失败: {save_err}")
+        send_message({ 'type': 'error' })
         err_text = f"{type(e).__name__}: {e}"
-        print("\033[31m [GAME] 游戏中止，打印中止时的GAME STATE \033[0m")
-        print(game.state)
         print(f"[SERVER] 游戏异常，已捕获，进程继续运行：{err_text}")
         traceback.print_exc()
         save_log()
         return err_text
     finally:
-        # 无论正常结束还是异常中止，都回收本局的 watcher 线程，
-        if game is not None:
-            game.watcher.stop()
         with state_lock:
             current_game = None
     return None

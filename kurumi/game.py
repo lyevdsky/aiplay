@@ -52,6 +52,25 @@ class Game:
         # 复刻生产环境的并行取帧，main 流程不区分 dev/生产。
         self.watcher = ChangeWatcher()
         self._running = True   # main 循环开关；stop() 置 False 让其退出
+        self._hotkey_listener = None
+        
+    def start_hotkeys(self):
+        def on_press(key):
+            if key == keyboard.Key.f1:
+                print_with_color('按下了F1，保存最近截图', 'red')
+                self.stop()
+                save_img_q()
+                self.watcher.save_log()
+            elif key == keyboard.Key.f2:
+                print_with_color('按下了F2，保存日志', 'red')
+                save_log('按下F2手动保存')
+        self._hotkey_listener = keyboard.Listener(on_press=on_press)
+        self._hotkey_listener.start()
+
+    def stop_hotkeys(self):
+        if self._hotkey_listener is not None:
+            self._hotkey_listener.stop()
+            self._hotkey_listener = None
 
     @property
     def phase(self):
@@ -465,12 +484,19 @@ class Game:
             elif self.phase == Phase.Hora:
                 # TODO 最后一张ron牌难以被识别
                 print_with_color('和了')
+                self.notify({
+                    'type': 'hora'
+                })
                 self.watcher.stop()
                 self.phase = Phase.EndKyoku
 
             elif self.phase == Phase.Ryukyoku:
                 # TODO 九种九牌流局后，太快重开了，wait new kyoku导致识别到流局时的状态为下一局开始了
                 print_with_color('流局')
+                self.notify({
+                    'type': 'ryukyoku'
+                })
+
                 self.watcher.stop()
                 self.phase = Phase.EndKyoku
 
@@ -494,6 +520,9 @@ class Game:
 
             elif self.phase == Phase.EndGame:
                 print_with_color('游戏结束')
+                self.notify({
+                    'type': 'end_game'
+                })
                 self.print_mjai()
                 break
 
@@ -529,6 +558,25 @@ class Game:
         for e in self.mjai:
             str = json.dumps(e)
             print(str)
+
+    def start(self):
+        self.start_hotkeys()
+        try:
+            self.main()
+        except Exception:
+            self.watcher.stop()      # 先停 watcher，再存图
+            try:
+                self.watcher.save_log()
+                save_img_q()
+            except Exception as save_err:
+                print(f"[SERVER] 存图失败: {save_err}")
+            print("\033[31m [GAME] 游戏中止，打印中止时的GAME STATE \033[0m")
+            print(self.state)
+            raise
+
+        finally:
+            self.watcher.stop()
+            self.stop_hotkeys()
     
     def stop(self):
         """停止游戏：置停止标志让 main 循环下一轮退出，并回收 watcher 线程。
@@ -537,30 +585,17 @@ class Game:
         self._running = False
         self.watcher.stop()
     
-game = None
 
-def on_press(key):
-    if key == keyboard.Key.f1:
-        print_with_color('按下了F1，保存最近截图', 'red')
-        # 这里可以放置你的 F1 功能逻辑
-        game.stop()
-        save_img_q()
-        game.watcher.save_log()
-    elif key == keyboard.Key.f2:
-        print_with_color('按下了F2，保存日志', 'red')
-        save_log('按下F2手动保存')
-
-listener = keyboard.Listener(on_press=on_press)
-listener.start()
 _state_3 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'last_player': 0, 'last_dahai': '4z', 'dora_markers': ['3m', '4s'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 0, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 14, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['2z', '2z'], 'tile': '2z'}, {'type': 'pon', 'consumed': ['1m', '1m'], 'tile': '1m'}, {'type': 'daiminkan'}], 'riichi': False}, {'kawa_index': 12, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 11, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 11, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
 _state_1 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 2, 'dora_markers': ['4s'], 'scores': [23000, 24500, 24500, 28000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 0, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 1, 'player_info': [{'kawa_index': 7, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 8, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 8, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 8, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
 _state_2 = {'honba': 2, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 3, 'dora_markers': ['1p'], 'scores': [43000, 33900, 19300, 3800], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 2, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 2, 'player_info': [{'kawa_index': 1, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 1, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 1, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 1, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
 if __name__ == "__main__":
+    game = None
     try:
         game = Game()
         game.start_with_state(_state_2)
         game.phase = Phase.Tsumo
-        game.main()
+        game.start()
     except Exception as e:
         save_img_q()
         print_with_color('游戏中止，打印中止时的GAME STATE', 'red')
