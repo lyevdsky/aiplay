@@ -21,7 +21,8 @@ import queue
 # 打牌太快问题。 !
 # 杠 哪个问题
 # 窗口最大化
-
+# TODO print 输出到app上，app上更新游戏状态，开始和停止游戏。 停止游戏后没有更新分值悬浮窗状态
+# TODO 保证只有app也能很好运行，异常状态保存现场。
 def print_with_color(text, color = 'green'):
     ts = time.strftime('%H:%M:%S')
     if color == 'green':
@@ -484,20 +485,21 @@ class Game:
             elif self.phase == Phase.Hora:
                 # TODO 最后一张ron牌难以被识别
                 print_with_color('和了')
-                self.notify({
-                    'type': 'hora'
-                })
+                # self.notify({
+                #     'type': 'hora'
+                # })
                 self.watcher.stop()
                 self.phase = Phase.EndKyoku
 
             elif self.phase == Phase.Ryukyoku:
                 # TODO 九种九牌流局后，太快重开了，wait new kyoku导致识别到流局时的状态为下一局开始了
                 print_with_color('流局')
-                self.notify({
-                    'type': 'ryukyoku'
-                })
+                # self.notify({
+                #     'type': 'ryukyoku'
+                # })
 
                 self.watcher.stop()
+                time.sleep(7)
                 self.phase = Phase.EndKyoku
 
             elif self.phase == Phase.EndKyoku:
@@ -584,7 +586,6 @@ class Game:
         watcher.save_log() 落盘。可重复调用（watcher.stop 自身幂等）。"""
         self._running = False
         self.watcher.stop()
-    
 
 _state_3 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 1, 'last_player': 0, 'last_dahai': '4z', 'dora_markers': ['3m', '4s'], 'scores': [25000, 25000, 25000, 25000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 0, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 0, 'player_info': [{'kawa_index': 14, 'riichi_index': None, 'melds': [{'type': 'pon', 'consumed': ['2z', '2z'], 'tile': '2z'}, {'type': 'pon', 'consumed': ['1m', '1m'], 'tile': '1m'}, {'type': 'daiminkan'}], 'riichi': False}, {'kawa_index': 12, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 11, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 11, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
 _state_1 = {'honba': 0, 'kyotaku': 0, 'bakaze': 'E', 'kyoku': 2, 'dora_markers': ['4s'], 'scores': [23000, 24500, 24500, 28000], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 0, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 1, 'player_info': [{'kawa_index': 7, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 8, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 8, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 8, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}

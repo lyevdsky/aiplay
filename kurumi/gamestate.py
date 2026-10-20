@@ -112,4 +112,5 @@ def init_gamestate():
             "melds": []
         }
     ]
-    
+
+# init_gamestate()

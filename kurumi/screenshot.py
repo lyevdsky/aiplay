@@ -90,7 +90,7 @@ def set_replay_folder(folder):
     print(f"replay: 载入 {len(_replay_files)} 张图片，来自 {folder}")
 
 # set_replay_folder('./logs/test2')
-set_replay_folder('./logs/20260708_220907')
+# set_replay_folder('./logs/20260708_220907')
 
 def _read_source():
     """统一取帧入口：只读当前游标指向的那一帧，不区分 reader、不推进游标。

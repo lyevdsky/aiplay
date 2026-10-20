@@ -5,7 +5,7 @@ import threading
 import time
 import traceback
 
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 import uvicorn
 
@@ -37,6 +37,8 @@ async def websocket_endpoint(websocket: WebSocket):
     clients.add(websocket)
     try:
         await websocket.receive_text()  # 保持连接
+    except WebSocketDisconnect:
+        print("客户端已断开连接")
     finally:
         clients.remove(websocket)
 
