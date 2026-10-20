@@ -1,132 +1,114 @@
-from datetime import datetime
-import os
-import threading
 import queue
+import threading
 import time
-import cv2
-from screenshot import get_screenshot, save_img_q
+import traceback
+
+from screenshot import get_screenshot
 from kyoku import get_active_player
 from hand import check_tsumo
 from kawa import check_dahai
 from meld import check_new_meld, check_kakan
 from hora import is_interrupt, is_hora, is_ryukyoku
 from gamestate import get_gamestate
-from util import stable_func, timed
+from util import stable_func
 from config import POLLING_INTERVAL, IS_DEV
-from collections import deque
+from debug.recorder import get_recorder
 
-img_q = deque(maxlen=20)
+QUEUE_NAMES = ('player_q', 'tsumo_q', 'dahai_q', 'meld_q', 'end_q')
+
 
 class ChangeWatcher:
     """后台线程：与 main 并行，持续在同一帧上跑全部识别，把时序信号按类型
     推入各自的队列；main 在对应 phase 主动从它需要的队列取/等数据。
 
     产出 5 类信号 / 5 个队列：
-    - self.player_q       : player_change（盯 active bar，沿用自维护 _current_player 去重）
-    - self.tsumo_q : 自己摸牌
-    - self.dahai_q : 当前玩家打牌
-    - self.meld_q  : 副露（check_new_meld 吃/碰/暗杠/大明杠 + check_kakan 加杠）
-    - self.end_q   : 终局中断（hora / ryukyoku），由 watcher 阻塞分辨后入队
+    - player_q : player_change（盯 active bar，沿用自维护 _current_player 去重）
+    - tsumo_q  : 自己摸牌
+    - dahai_q  : 当前玩家打牌
+    - meld_q   : 副露（check_new_meld 吃/碰/暗杠/大明杠 + check_kakan 加杠）
+    - end_q    : 终局中断（hora / ryukyoku）
 
-    设计约束：
-    - 不产 mjai 事件；终局中断由 watcher 全权识别：is_interrupt 一旦命中，
-      就阻塞分辨出 hora / ryukyoku 推入 end_q；中断期间整轮不识别牌，
-      避免吃碰杠/终局动画被误判成打牌。main 只按各队列更新游戏进程，不做识别。
-    - 去重沿用现有退避：某队列还有未被 main 消费的事件，就不再跑对应的 check。
-    - 直接复用模块级 check_tsumo/check_dahai/check_new_meld/check_kakan——这些
-      check 本就只有一处调用，调用方从 main 改成 watcher，故无共享状态冲突。
-    - watcher 是 dev 单游标的唯一推进者：每轮 get_screenshot 抓一帧，所有识别
-      共用这一帧（避免撕裂）；main 不再为识别取帧。
+    可复现性设计：
+    - 一轮识别 = step(shot, fid)：只依赖 (帧, gamestate, 自身私有状态, 队列内容)，
+      不取帧、不 sleep、不阻塞。_loop 只是「取帧 → step → sleep」。
+      终局中断不再阻塞等待，而是每个 step 尝试分辨一次，语义等价。
+    - 每个 step 开头把 gamestate + 私有状态快照写入 recorder，结尾写 step 事件
+      （含各 check 的输出，None 也记）。replay.py 用同一个 step 重放并逐帧比对。
     """
 
     def __init__(self):
-        self.player_q = queue.Queue()           # player_change
+        self.player_q = queue.Queue()
         self.tsumo_q = queue.Queue()
         self.dahai_q = queue.Queue()
         self.meld_q = queue.Queue()
-        self.end_q = queue.Queue()       # 终局中断 hora / ryukyoku
-        self._current_player = None      # 线程内记录的当前手番（绝对 id），仅 player_change 用
-        self._player_to_id = None        # position 名 -> id 的映射
+        self.end_q = queue.Queue()
+        self._current_player = None
+        self._player_to_id = None
         self._running = False
         self._thread = None
+        self.error = None                # 线程异常：main 应检查并抛出，避免静默卡死
 
-        # 生产环境日志：给每个队列的 put 包一层，记录「每一次入队」（不带帧号，
-        # 带墙钟时刻），save_log 落盘。含 _keep_latest 的覆盖写也会被记录。
-        self._log = []
-        for q, name in ((self.player_q, 'player_change'), (self.tsumo_q, 'tsumo'),
-                        (self.dahai_q, 'dahai'), (self.meld_q, 'meld'), (self.end_q, 'end')):
-            self._wrap_put(q, name)
+        for name in QUEUE_NAMES:
+            self._wrap_put(getattr(self, name), name)
 
-        # 线程私有的去抖实例，避免与主流程共用 stable_func 闭包状态
         self._stable_active = stable_func(get_active_player)
+        get_recorder().add_extra('watcher', self._extra)
 
+    # ---------------------------------------------------------------- 记录相关
     def _wrap_put(self, q, name):
-        """包裹队列实例的 put：入队前把 '时刻 [队列名] 事件' 追加进 self._log。"""
+        """包裹队列实例的 put：入队前把事件写进 recorder（含 _keep_latest 的覆盖写）。"""
         orig_put = q.put
 
         def put(item, *args, **kwargs):
-            ts = datetime.now().strftime('%H:%M:%S.%f')[:-3]
-            self._log.append(f'{ts} [{name}] {item}')
+            rec = get_recorder()
+            rec.log('watcher', 'put', q=name, fid=rec.thread_fid(), item=item)
             return orig_put(item, *args, **kwargs)
 
         q.put = put
 
-    def save_log(self, path=None):
-        """把本 watcher 记录的所有队列 put 落盘到 logs/change_watcher/时间戳.log
-        （每条形如 'HH:MM:SS.mmm [队列名] {事件}'），落盘后清空记录。"""
-        if path is None:
-            folder = './logs/change_watcher'
-            os.makedirs(folder, exist_ok=True)
-            path = os.path.join(folder, datetime.now().strftime('%Y-%m-%d_%H-%M-%S') + '.log')
-        else:
-            os.makedirs(os.path.dirname(path) or '.', exist_ok=True)
-        lines = list(self._log)
-        self._log.clear()
-        with open(path, 'w', encoding='utf-8') as f:
-            for line in lines:
-                f.write(line + '\n')
-        print(f'change_watcher: 保存 {len(lines)} 条 put 记录到 {path}')
-        return path
+    def _extra(self):
+        """随 gamestate 一起快照的私有状态（队列内容会影响「是否跳过 check」）。"""
+        return {'current_player': self._current_player,
+                'player_to_id': self._player_to_id,
+                'queues': {n: list(getattr(self, n).queue) for n in QUEUE_NAMES}}
 
+    # ---------------------------------------------------------------- 生命周期
     def reset(self, current_player, player_to_id):
-        """新一局开始时由主流程调用，设置手番基准。线程是每局一条，
-        终局由主流程调用 stop() 回收，reset 后需重新 start。
-        reset 始终在 start 之前调用，线程存活期间只有它自己读写这些字段，
-        不存在并发，故无需加锁。"""
+        """新一局开始时由主流程调用，设置手番基准。reset 始终在 start 之前调用。"""
         self._current_player = current_player
         self._player_to_id = dict(player_to_id)
-        # 复位去抖实例，丢弃上一手番残留的采样
         self._stable_active = stable_func(get_active_player)
+        get_recorder().log('watcher', 'reset', current_player=current_player,
+                           player_to_id=self._player_to_id)
 
     def start(self):
-        """启动一条新监视线程。线程生命周期与一局同步：终局由主流程
-        调用 stop() 回收，下一局在 reset 后再次调用本方法新建线程。"""
         if self._running:
             return
-        # 清空各队列，避免之前对局异常终止，残留
-        for q in (self.player_q, self.tsumo_q, self.dahai_q, self.meld_q, self.end_q):
+        for name in QUEUE_NAMES:
+            q = getattr(self, name)
             while True:
                 try:
                     q.get_nowait()
                 except queue.Empty:
                     break
+        self.error = None
         self._running = True
-        self._thread = threading.Thread(target=self._loop, daemon=True)
+        get_recorder().log('watcher', 'start')
+        self._thread = threading.Thread(target=self._loop, name='watcher', daemon=True)
         self._thread.start()
 
     def stop(self):
-        """停止监视线程并等待其退出。一局结束 / 异常中止时务必调用：
-        daemon 线程不会随单局自动回收 """
+        was = self._running
         self._running = False
         t = self._thread
         if t is not None and t.is_alive() and t is not threading.current_thread():
             t.join(timeout=2)
         self._thread = None
+        if was:
+            get_recorder().log('watcher', 'stop')
 
     @staticmethod
     def _keep_latest(q, item=None):
-        """把队列刷成「只含最新一项」：先清空，item 非 None 再放入。
-        用于 tsumo_q——不断覆盖更新，main 取到的永远是最近一次识别结果。"""
         try:
             q.get_nowait()
         except queue.Empty:
@@ -136,86 +118,99 @@ class ChangeWatcher:
 
     @staticmethod
     def _ctx(pid, pi):
-        """识别时的关键状态，作为事件的有效性 key：玩家 id + 其牌河进度 kawa_index
-        + 副露类型序列。类型序列同时覆盖「第几个副露」(长度) 与「加杠 pon→kakan」
-        (类型变化)，比单纯 melds 长度更准。main 用当前该玩家的实时状态算出同样的
-        ctx 比较，对不上即为上一手番残留、丢弃。"""
+        """事件有效性 key：玩家 id + kawa_index + 副露类型序列。"""
         return (pid, pi['kawa_index'], tuple(m['type'] for m in pi['melds']))
 
+    # ---------------------------------------------------------------- 一轮识别
+    def step(self, shot, fid):
+        """对一帧做完整一轮识别。返回 out（各 check 的输出，供日志/重放比对）。"""
+        rec = get_recorder()
+        gs_in, ex_in = rec.freeze()
+        rec.record_state(fid, gs_in, ex_in)
+        out = {}
+        try:
+            self._step(shot, out)
+        finally:
+            gs_out, _ = rec.freeze(with_extra=False)
+            extra = {'gs_changed': True} if gs_out != gs_in else {}
+            rec.log('watcher', 'step', fid=fid, out=out, **extra)
+        return out
+
+    def _step(self, shot, out):
+        # 终局中断：整轮不识别牌；end_q 为空则尝试分辨 hora / ryukyoku（非阻塞，
+        # 分辨不出就下一帧再试）。
+        if is_interrupt(shot):
+            out['interrupt'] = True
+            if self.end_q.empty():
+                if is_hora(shot):
+                    out['end'] = 'hora'
+                    self.end_q.put({'type': 'hora'})
+                elif is_ryukyoku(shot):
+                    out['end'] = 'ryukyoku'
+                    self.end_q.put({'type': 'ryukyoku'})
+            return
+
+        gs = get_gamestate()
+        cur = gs['current_player']
+        out['cur'], out['last'] = cur, gs['last_player']
+
+        # player_change
+        if self.player_q.empty():
+            active = self._stable_active(shot)
+            out['active'] = active
+            if active is not None:
+                pid = self._player_to_id[active]
+                if pid != self._current_player:
+                    self._current_player = pid
+                    self.player_q.put({'type': 'player_change', 'pid': pid})
+
+        # 摸牌：只在自己手番识别；tsumo_q 只保留最新一次
+        my_id = self._player_to_id['self']
+        if self._current_player == my_id:
+            tile = check_tsumo(shot)
+            out['tsumo'] = tile
+            if tile is not None:
+                self._keep_latest(self.tsumo_q, {'type': 'tsumo', 'tile': tile,
+                                                 'ctx': self._ctx(my_id, gs['player_info'][my_id])})
+        else:
+            self._keep_latest(self.tsumo_q)
+
+        # 打牌
+        if cur != gs['last_player']:
+            res = check_dahai(shot)
+            out['dahai'] = res
+            if res is not None:
+                tile, tsumogiri, riichi = res
+                self._keep_latest(self.dahai_q, {'type': 'dahai', 'tile': tile,
+                                                 'tsumogiri': tsumogiri, 'riichi': riichi,
+                                                 'ctx': self._ctx(cur, gs['player_info'][cur])})
+
+        # 副露
+        if cur != gs['last_player']:
+            meld = check_new_meld(shot) or check_kakan(shot)
+            out['meld'] = meld
+            if meld is not None:
+                meld['ctx'] = self._ctx(cur, gs['player_info'][cur])
+                self._keep_latest(self.meld_q, meld)
+
     def _loop(self):
-        # watcher 是唯一的游标推进者，取帧(解码)+识别本身即天然节流。生产(摄像头)
-        # 下取帧很快，需 sleep 限制 CPU 占用；dev 只睡极短，让游标尽快推进、快速跑完视频。
         def sleep():
             time.sleep(POLLING_INTERVAL if not IS_DEV else 0.05)
-    
+
+        rec = get_recorder()
         while self._running:
-            shot = get_screenshot()
-            img_q.append(shot)
-            if shot is None or shot is False:
-                sleep()
-                continue
-
-            # 终局中断：一旦进入中断动画，整轮不再识别牌（吃碰杠/终局动画极易
-            # 被误判成打牌），并阻塞分辨出 hora / ryukyoku 推入 end_q（此局已
-            # 结束，watcher 无需再做别的）。end_q 非空则不重复分辨。
-            if is_interrupt(shot):
-                if self.end_q.empty():
-                    while self._running:
-                        if is_hora():
-                            self.end_q.put({'type': 'hora'})
-                            break
-                        if is_ryukyoku():
-                            self.end_q.put({'type': 'ryukyoku'})
-                            break
-                        sleep()
-                sleep()
-                continue
-
-            gs = get_gamestate()
-            cur = gs['current_player']
-
-            # player_change：盯 active bar，自维护 _current_player 去重；
-            # 队列尚有未消费信号则跳过，避免重复推送。
-            if self.player_q.empty():
-                active = self._stable_active(shot)
-                if active is not None:
-                    pid = self._player_to_id[active]
-                    if pid != self._current_player:
-                        self._current_player = pid
-                        self.player_q.put({'type': 'player_change', 'pid': pid})
-                        # print(f'change_watcher: player change to {pid}')
-
-            # 摸牌：只在自己手番识别（rec_tsumo 看自己手牌的摸牌位）。tsumo_q 只
-            # 保留最近一次结果——不断覆盖更新，让 main 取到最新最稳的摸牌；None 不入
-            # 队。非自己手番则清空，避免上一手番的摸牌残留到下一手番。
-            my_id = self._player_to_id['self']
-            if self._current_player == my_id:
-                tile = check_tsumo(shot)
-                if tile is not None:
-                    self._keep_latest(self.tsumo_q, {'type': 'tsumo', 'tile': tile,
-                                                     'ctx': self._ctx(my_id, gs['player_info'][my_id])})
-            else:
-                self._keep_latest(self.tsumo_q)
-
-            # 打牌：当前玩家牌河下一张。前置条件 current_player != last_player——
-            # 当前玩家一旦打牌，main 会把 last_player 置为它，于是停检，直到手番转移。
-            # dahai_q 同 tsumo_q 只保留最新一次结果，main 每轮取最新；避免陈旧残留。
-            if cur != gs['last_player']:
-                res = check_dahai(shot)
-                if res is not None:
-                    tile, tsumogiri, riichi = res
-                    self._keep_latest(self.dahai_q, {'type': 'dahai', 'tile': tile,
-                                                     'tsumogiri': tsumogiri, 'riichi': riichi,
-                                                     'ctx': self._ctx(cur, gs['player_info'][cur])})
-
-            # 副露：新副露（吃/碰/暗杠/大明杠）与加杠分别识别，二者互斥。
-            # meld 本身就带 type（chi/pon/ankan/daiminkan/kakan），直接入队，
-            # main 按 type 分派即可。前置条件同 dahai：current_player != last_player，
-            # 当前玩家一旦打牌就停检（其手番结束、不会再有新副露）。meld_q 同样只留最新。
-            if cur != gs['last_player']:
-                meld = check_new_meld(shot) or check_kakan(shot)
-                if meld is not None:
-                    meld['ctx'] = self._ctx(cur, gs['player_info'][cur])   # 有效性 key，供 main 校验
-                    self._keep_latest(self.meld_q, meld)
-
+            try:
+                shot = get_screenshot()
+                if shot is None or shot is False:
+                    sleep()
+                    continue
+                self.step(shot, rec.thread_fid())
+            except Exception as e:
+                # 以前这里一旦抛异常线程静默死亡，main 永远等不到信号 → 表现为「卡死」。
+                self.error = e
+                traceback.print_exc()
+                rec.log('watcher', 'crash', err=repr(e), tb=traceback.format_exc())
+                rec.dump('watcher_crash')
+                self._running = False
+                return
             sleep()

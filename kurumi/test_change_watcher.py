@@ -92,9 +92,6 @@ def run_over_test_data(max_signals=100000):
 
     w.stop()
 
-    # 存盘 watcher 走过的每一帧；文件名下标即上面打印里的 [frame N]
-    from screenshot import save_img_q
-    save_img_q()
 
     print(f'\n共消费 {len(events)} 个信号（每次 put 见上方 [frame N] 打印）')
     return events

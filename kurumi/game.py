@@ -3,8 +3,6 @@ warnings.filterwarnings("ignore")
 import json
 import time
 
-from screenshot import get_screenshot, save_img_q
-from logger_setup import save_log
 from kyoku import rec_kyoku_info, check_new_dora_marker, wait_new_kyoku
 from gamestate import get_gamestate, init_gamestate, set_gamestate, Phase
 from hand import rec_hand, check_tsumo, rec_tsumo
@@ -13,6 +11,7 @@ from config import POLLING_INTERVAL, IS_DEV
 from pynput import keyboard
 from mortal.bot import Bot
 from change_watcher import ChangeWatcher
+from debug.recorder import get_recorder
 import queue
 
 # TODO
@@ -60,11 +59,7 @@ class Game:
             if key == keyboard.Key.f1:
                 print_with_color('按下了F1，保存最近截图', 'red')
                 self.stop()
-                save_img_q()
-                self.watcher.save_log()
-            elif key == keyboard.Key.f2:
-                print_with_color('按下了F2，保存日志', 'red')
-                save_log('按下F2手动保存')
+                get_recorder().dump('F1')
         self._hotkey_listener = keyboard.Listener(on_press=on_press)
         self._hotkey_listener.start()
 
@@ -80,6 +75,9 @@ class Game:
 
     @phase.setter
     def phase(self, value):
+        old = self.state.get('phase')
+        if old != value:
+            get_recorder().log('main', 'phase', old=old, new=value)
         self.state['phase'] = value
 
     # last_player / last_dahai 同样归属 gamestate：main 更新，watcher 读它们
@@ -300,13 +298,15 @@ class Game:
         raise TimeoutError('wait_any 超时没有结果')
 
     @staticmethod
-    def _poll(q, cur=None):
+    def _poll(q, cur=None, name=None):
         """取队列最新事件，队列空则原样返回 cur（保留上轮未消费的值）。
         dahai_q/tsumo_q/meld_q 在 watcher 端只留最新一项，故这里每轮覆盖即取最新。"""
         try:
-            return q.get_nowait()
+            item = q.get_nowait()
         except queue.Empty:
             return cur
+        get_recorder().log('main', 'consume', q=name, item=item)
+        return item
 
     def main(self):
         INTERVAL_TIME = 0.1
@@ -328,11 +328,11 @@ class Game:
             player = state['current_player']
             with timed('get_queue'):
                 # 全部队列每轮取最新（dahai_q/tsumo_q/meld_q 在 watcher 端只留最新一项）。
-                meld = self._poll(self.watcher.meld_q, meld)
-                dahai = self._poll(self.watcher.dahai_q, dahai)
-                tsumo = self._poll(self.watcher.tsumo_q, tsumo)
-                end = self._poll(self.watcher.end_q, end)
-                change_player = self._poll(self.watcher.player_q, change_player)
+                meld = self._poll(self.watcher.meld_q, meld, 'meld_q')
+                dahai = self._poll(self.watcher.dahai_q, dahai, 'dahai_q')
+                tsumo = self._poll(self.watcher.tsumo_q, tsumo, 'tsumo_q')
+                end = self._poll(self.watcher.end_q, end, 'end_q')
+                change_player = self._poll(self.watcher.player_q, change_player, 'player_q')
 
                 # 丢弃与当前状态对不上的陈旧识别（上一手番残留）：用识别时的 ctx
                 # （玩家 + kawa_index + 副露类型序列）比对当前该玩家的实时 ctx。
@@ -529,7 +529,9 @@ class Game:
                 break
 
     def notify(self, message):
+        
         self.mjai.append(message)
+        get_recorder().log('main', 'mjai', msg=message)
 
         if self.listener is not None:
             self.listener({ 'type': 'mjai', 'data': message })
@@ -567,12 +569,7 @@ class Game:
             self.main()
         except Exception:
             self.watcher.stop()      # 先停 watcher，再存图
-            try:
-                self.watcher.save_log()
-                save_img_q()
-            except Exception as save_err:
-                print(f"[SERVER] 存图失败: {save_err}")
-            print("\033[31m [GAME] 游戏中止，打印中止时的GAME STATE \033[0m")
+            get_recorder().dump('exception')
             print(self.state)
             raise
 
@@ -581,9 +578,7 @@ class Game:
             self.stop_hotkeys()
     
     def stop(self):
-        """停止游戏：置停止标志让 main 循环下一轮退出，并回收 watcher 线程。
-        由 F1 热键 / 外部调用触发。watcher 的 put 记录不清空，随后可调
-        watcher.save_log() 落盘。可重复调用（watcher.stop 自身幂等）。"""
+        """停止游戏：置停止标志让 main 循环下一轮退出，并回收 watcher 线程。"""
         self._running = False
         self.watcher.stop()
 
@@ -594,11 +589,10 @@ if __name__ == "__main__":
     game = None
     try:
         game = Game()
-        game.start_with_state(_state_2)
-        game.phase = Phase.Tsumo
+        # game.start_with_state(_state_2)
+        # game.phase = Phase.Tsumo
         game.start()
     except Exception as e:
-        save_img_q()
         print_with_color('游戏中止，打印中止时的GAME STATE', 'red')
         print(game.state)
         raise e
