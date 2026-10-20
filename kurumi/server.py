@@ -10,7 +10,7 @@ from fastapi.responses import HTMLResponse
 import uvicorn
 
 from game import Game
-from screenshot import save_img_q
+from recorder import get_recorder
 from logger_setup import save_log
 
 app = FastAPI()
@@ -70,8 +70,8 @@ def game_save():
     if game is None:
         return {"ok": False, "status": status, "msg": "当前没有在运行的游戏"}
     try:
-        log_path = game.watcher.save_log()
-        save_img_q()
+        get_recorder().dump('manual')
+
     except Exception as e:
         return {"ok": False, "msg": f"保存失败: {e}"}
     return {"ok": True, "log": log_path}

@@ -1,7 +1,7 @@
 import time
 import cv2
 from util import has_template, ocr_digits, find_contour, stable_func, polling, timed
-from screenshot import get_screenshot, save_img_q, set_debug_screenshot
+from screenshot import get_screenshot, set_debug_screenshot
 from gamestate import get_gamestate
 from config import *
 from tile import check_tile, TileType
@@ -168,7 +168,6 @@ def wait_new_kyoku():
     try:
         polling(check_new_kyoku, POLLING_INTERVAL, timeout = 300)
         # 等待手牌准备就绪
-        # save_img_q()
         polling(rec_hand, POLLING_INTERVAL, timeout = None)
         time.sleep(0.5)
         return True
