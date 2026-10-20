@@ -10,7 +10,7 @@ from fastapi.responses import HTMLResponse
 import uvicorn
 
 from game import Game
-from recorder import get_recorder
+from debug.recorder import get_recorder
 from logger_setup import save_log
 
 app = FastAPI()

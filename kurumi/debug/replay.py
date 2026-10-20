@@ -16,10 +16,20 @@ import os
 import queue
 import sys
 
+# 本文件在 kurumi/debug/ 下。项目里 game.py 等用的是顶层导入（from screenshot import ...），
+# 同时 recorder 用包路径 kurumi.debug.recorder，所以两个目录都要在 sys.path 里：
+#   kurumi/ 目录      → screenshot、change_watcher、gamestate ...
+#   kurumi 的上一级   → kurumi.debug.recorder
+# 并且 change_watcher 一律按顶层名导入，与 game.py 保持同一个模块身份，避免重复加载。
+_KURUMI_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+for _p in (os.path.dirname(_KURUMI_DIR), _KURUMI_DIR):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
 import cv2
 
-import recorder
-from recorder import Recorder, dumps
+from kurumi.debug import recorder
+from kurumi.debug.recorder import Recorder, dumps
 
 
 def _jl(path):
@@ -37,14 +47,7 @@ def replay(folder, start=None, end=None, warmup=5, verbose=False):
     states = _jl(os.path.join(folder, 'states.jsonl'))
     state_fids = [s['fid'] for s in states]
 
-    # 代码/参数漂移提示
-    cur_cfg = Recorder._config_snapshot()
-    drift = [k for k, v in meta.get('config', {}).items() if cur_cfg.get(k) != v]
-    if drift:
-        print(f'[warn] config 与 dump 时不一致: {drift[:10]}{"..." if len(drift) > 10 else ""}')
-    git = meta.get('git', {})
-    print(f'[meta] reason={meta.get("reason")} commit={git.get("commit", "?")[:8]} '
-          f'dirty={git.get("dirty")} dropped_frames={meta.get("dropped_frames")}')
+    print(f'[meta] reason={meta.get("reason")} dropped_frames={meta.get("dropped_frames")}')
 
     steps = [e for e in events if e['src'] == 'watcher' and e['kind'] == 'step'
              and frames.get(e['fid'], {}).get('file')
@@ -122,4 +125,6 @@ if __name__ == '__main__':
     ap.add_argument('--warmup', type=int, default=5)
     ap.add_argument('-v', '--verbose', action='store_true')
     a = ap.parse_args()
-    sys.exit(1 if replay(a.folder, a.start, a.end, a.warmup, a.verbose) else 0)
+    folder = os.path.abspath(a.folder)     # 先按当前目录解析，再切换工作目录
+    os.chdir(_KURUMI_DIR)                  # hora/tile 等用 ./ref/... 相对路径加载模板和模型
+    sys.exit(1 if replay(folder, a.start, a.end, a.warmup, a.verbose) else 0)

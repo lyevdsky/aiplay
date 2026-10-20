@@ -22,6 +22,15 @@ import queue
 # 窗口最大化
 # TODO print 输出到app上，app上更新游戏状态，开始和停止游戏。 停止游戏后没有更新分值悬浮窗状态
 # TODO 保证只有app也能很好运行，异常状态保存现场。
+# TODO recorder 的rolling 要每局重置，覆盖清除。
+# TODO 测试replay
+# TODO ctrl + c Traceback (most recent call last):
+#   File "C:\game\code\mjai\aiplay\kurumi\mortal\bot.py", line 24, in react
+#     if reaction := self.ai.react(eventstr):
+#                    ^^^^^^^^^^^^^
+# AttributeError: 'NoneType' object has no attribute 'react'
+# [SERVER] 收到 Ctrl+C，退出进程
+# AttributeError: 'NoneType' object has no attribute 'react'
 def print_with_color(text, color = 'green'):
     ts = time.strftime('%H:%M:%S')
     if color == 'green':

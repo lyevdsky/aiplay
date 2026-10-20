@@ -15,6 +15,7 @@ import os
 import queue
 import re
 import shutil
+import sys
 import threading
 import time
 from collections import deque
@@ -256,6 +257,14 @@ class Recorder:
 
 _rec = None
 _rec_lock = threading.Lock()
+
+# 同一进程里 recorder.py 可能被两条路径各加载一次（sys.path 同时有 aiplay 和
+# aiplay/kurumi 时：`debug.recorder` 与 `kurumi.debug.recorder`），两个模块对象各有
+# 一份 _rec：帧记在一份、dump 在另一份 → F1 dump 出 0 帧。把最先加载的模块对象注册到
+# 所有别名下，保证全进程只有一个 Recorder。
+for _alias in ('debug.recorder', 'kurumi.debug.recorder'):
+    sys.modules.setdefault(_alias, sys.modules[__name__])
+del _alias
 
 
 def get_recorder():

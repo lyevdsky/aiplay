@@ -5,7 +5,7 @@ import threading
 import cv2
 
 from util import timed
-from kurumi.debug.recorder import get_recorder
+from debug.recorder import get_recorder
 
 # ── 帧源（三选一，按优先级）────────────────────────────────────
 #   1. set_debug_screenshot(path)  固定返回一张图，调试单帧用
@@ -13,6 +13,7 @@ from kurumi.debug.recorder import get_recorder
 #                                  video_to_frames.py 切成文件夹）
 #   3. 都没设                      生产：摄像头(dxcam)最新帧
 REPLAY_FOLDER = './frames/meld_self_kakan_0s-188.15s_50ms'   # 置 None 则走摄像头
+REPLAY_FOLDER = None   # 置 None 则走摄像头
 
 SHOW_SCREENSHOW = False
 
