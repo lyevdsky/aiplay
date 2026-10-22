@@ -397,8 +397,26 @@ class Game:
                             f'不是 player({player}) 的上家 {(player - 1) % 4}，'
                             f'说明有副露未被识别'
                         )
-                    # unknown阶段识别出dahai，说明是非自家正常摸牌后打牌，先补上摸牌阶段
-                    self.phase = Phase.Tsumo
+                    # unknown阶段识别出dahai
+                    if player == state['my_id']:
+                        if tsumo is not None:
+                            self.phase = Phase.Tsumo
+                        else:
+                            # 如果是自己打牌，且没有识别到摸牌阶段，说明漏识别了摸牌阶段，
+                            # 如果牌是摸切则补上摸牌阶段，否则直接抛异常暴露问题 
+                            # （减少立直后快速摸切导致漏识别摸牌异常，不做详细的手牌跟踪，识别手牌来判断具体摸什么牌，只做简单摸切情况）
+                            if dahai['tsumogiri']:
+                                tsumo = { 'tile': dahai['tile'] }
+                                get_recorder().log('main', 'miss_tsumo', tile=dahai['tile'])
+                                self.phase = Phase.Tsumo
+                            else:
+                                raise RuntimeError(
+                                    f'Unknown 阶段识别到自己打牌，未识别到摸牌，且打牌不是摸切'
+                                )
+                            continue
+                    else:
+                        # 其他玩家的dahai，补上摸牌阶段
+                        self.phase = Phase.Tsumo
                 elif end is not None:
                     # 需要补上摸牌阶段
                     self.phase = Phase.Tsumo
