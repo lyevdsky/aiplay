@@ -22,7 +22,6 @@ import queue
 # 窗口最大化
 # TODO print 输出到app上，app上更新游戏状态，开始和停止游戏。 停止游戏后没有更新分值悬浮窗状态
 # TODO 保证只有app也能很好运行，异常状态保存现场。
-# TODO recorder 的rolling 要每局重置，覆盖清除。
 # TODO 测试replay
 # TODO ctrl + c Traceback (most recent call last):
 #   File "C:\game\code\mjai\aiplay\kurumi\mortal\bot.py", line 24, in react
@@ -115,6 +114,8 @@ class Game:
 
 
     def start_kyoku(self):
+        get_recorder().reset()
+        get_recorder().log('main', 'new_kyoku')
         print("Starting new kyoku...")
         # init 
         init_gamestate()
@@ -576,8 +577,9 @@ class Game:
         self.start_hotkeys()
         try:
             self.main()
-        except Exception:
+        except Exception as e:
             self.watcher.stop()      # 先停 watcher，再存图
+            get_recorder().log_exception('main', e)
             get_recorder().dump('exception')
             print(self.state)
             raise

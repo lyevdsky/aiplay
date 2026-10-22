@@ -47,7 +47,7 @@ def replay(folder, start=None, end=None, warmup=5, verbose=False):
     states = _jl(os.path.join(folder, 'states.jsonl'))
     state_fids = [s['fid'] for s in states]
 
-    print(f'[meta] reason={meta.get("reason")} dropped_frames={meta.get("dropped_frames")}')
+    print(f'[meta] reason={meta.get("reason")} frames={meta.get("frames")}')
 
     steps = [e for e in events if e['src'] == 'watcher' and e['kind'] == 'step'
              and frames.get(e['fid'], {}).get('file')
@@ -57,7 +57,7 @@ def replay(folder, start=None, end=None, warmup=5, verbose=False):
         raise SystemExit('没有可重放的 watcher step')
 
     # 用独立 recorder（不落盘不存帧），避免重放污染现场；必须在构造 ChangeWatcher 之前设置
-    recorder.set_recorder(Recorder(persist=False, store_frames=False))
+    recorder.set_recorder(Recorder(store_frames=False))
     from change_watcher import ChangeWatcher
     from gamestate import set_gamestate
     w = ChangeWatcher()
