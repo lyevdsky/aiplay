@@ -391,6 +391,7 @@ class Game:
                     # last_player 不是上家，说明这一手番是被副露抢来的；可这里走到 dahai 分支
                     # 意味着 meld 没被先识别出来——漏识别了副露，直接抛异常暴露问题，
                     # 避免把「副露后打牌」错当成「正常摸牌后打牌」补错摸牌阶段。
+                    # TODO 有个bug是打牌和副露动画同时，导致打牌比副露先识别出来大概快1帧，导致raise 副露未识别异常。
                     if self.last_player is not None and self.last_player != (player - 1) % 4:
                         raise RuntimeError(
                             f'Unknown 阶段直接识别到打牌，但 last_player({self.last_player}) '
@@ -406,14 +407,15 @@ class Game:
                             # 如果牌是摸切则补上摸牌阶段，否则直接抛异常暴露问题 
                             # （减少立直后快速摸切导致漏识别摸牌异常，不做详细的手牌跟踪，识别手牌来判断具体摸什么牌，只做简单摸切情况）
                             if dahai['tsumogiri']:
+                                # 这里就不直接continue了，否则tsumo会被清除。
                                 tsumo = { 'tile': dahai['tile'] }
                                 get_recorder().log('main', 'miss_tsumo', tile=dahai['tile'])
+                                print_with_color(f'未识别到摸牌，补上摸牌{dahai["tile"]}', 'red')
                                 self.phase = Phase.Tsumo
                             else:
                                 raise RuntimeError(
                                     f'Unknown 阶段识别到自己打牌，未识别到摸牌，且打牌不是摸切'
                                 )
-                            continue
                     else:
                         # 其他玩家的dahai，补上摸牌阶段
                         self.phase = Phase.Tsumo

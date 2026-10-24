@@ -21,19 +21,31 @@ ACROSS_NUM = [0, 1]
 REC_PREV_W_H = (200, 280) # w h
 REC_SELF_W_H = (400, 150)
 REC_ACROSS_W_H = (300, 100)
-def preprocess_screenshot(shot, player):
-  with timed('preprocess_screenshot'):
-    """按 player 对 screenshot 的特定区域做预处理（增亮 HSV 的 V 通道）。
-    在 shot 的副本上修改并返回，不影响原图（img_q/快照保持原始像素）。"""
-    shot = shot.copy()
-    # 一番街名字的阴影导致亮度变低影响牌面的轮廓识别，这里进行亮度增强
-    if player == 'next':
-        x, y, w, h = 2060, 195, 30, 32
-        roi = shot[y:y+h, x:x+w]
-        hsv = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-        hsv[:, :, 2] = cv2.add(hsv[:, :, 2], 40)  # V +40，cv2.add 自动饱和到 255
-        shot[y:y+h, x:x+w] = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
-    return shot
+
+def crop_and_preprocess(shot, player, region):
+    """裁出 region 的副本并做预处理，返回裁剪后的图。
+    只拷贝 region 大小的内存，原 shot 不被修改（recorder 快照保持原始像素）。
+    阴影区增亮只作用于它与 region 的交集。"""
+    with timed('preprocess_screenshot'):
+        x, y, w, h = region
+        H, W = shot.shape[:2]
+        # 夹到图像范围内，避免负坐标触发 numpy 的回绕切片
+        x0, y0 = max(x, 0), max(y, 0)
+        x1, y1 = min(x + w, W), min(y + h, H)
+        img = shot[y0:y1, x0:x1].copy()
+
+        # 一番街名字的阴影导致亮度变低影响牌面的轮廓识别，这里进行亮度增强
+        NEXT_SHADOW_ROI = (2060, 195, 30, 32)
+        if player == 'next' and img.size > 0:
+            rx, ry, rw, rh = NEXT_SHADOW_ROI
+            ix0, iy0 = max(rx, x0), max(ry, y0)
+            ix1, iy1 = min(rx + rw, x1), min(ry + rh, y1)
+            if ix0 < ix1 and iy0 < iy1:
+                sub = img[iy0 - y0:iy1 - y0, ix0 - x0:ix1 - x0]   # 视图，改它即改 img
+                hsv = cv2.cvtColor(sub, cv2.COLOR_BGR2HSV)
+                hsv[:, :, 2] = cv2.add(hsv[:, :, 2], 40)          # V +40，饱和到 255
+                sub[:] = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)
+        return img
 
 def computed_next_point(player, melds):
     a = 0
@@ -146,8 +158,14 @@ def rec_new_meld(shot):
     # melds = []
     # player = 'next'
     x,y,w,h = get_meld_region(player, melds, len(melds))
-    shot = preprocess_screenshot(shot, player)
-    img = shot[y:y+h, x:x+w]
+    img = crop_and_preprocess(shot, player, (x, y, w, h))
+    if img.size == 0:
+        return None
+    # result = check_tiles(img, player, debug=False)
+    # x,y,w,h = get_meld_region(player, melds, len(melds))
+    # shot = preprocess_screenshot(shot, player)
+    # img = shot[y:y+h, x:x+w]
+
     result = check_tiles(img, player, debug=False)
     # print(result)
     meld = None
@@ -219,7 +237,7 @@ def check_kakan(shot):
 # set_gamestate(_state_3)
 
 # shot = cv2.imread('./error/0412__loop_L152.png')
-# shot = cv2.imread('./logs/20260703_193724/0060__loop_L117.png')
+# shot = cv2.imread('./logs/dump/20261024_152039_exception/frames/0014503.png')
 # res = rec_kakan(shot)
 # print(res)
 # cv2.imshow('shot', shot)
