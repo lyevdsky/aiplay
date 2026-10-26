@@ -122,20 +122,11 @@ def get_meld_region(player, melds, index):
     return list((int(x) for x in region))
 
 
-def get_current_player_info():
-    gamestate = get_gamestate()
-    position = gamestate['position']
-    player_pos = position[gamestate['current_player']]
-    player_info = gamestate['player_info'][gamestate['current_player']]
-    melds = player_info['melds']
-    return player_pos, melds
-
 # 识别是否存在加杠
-def rec_kakan(shot):
-    player, melds = get_current_player_info()
+def rec_kakan(shot, player, melds):
     for i, meld in enumerate(melds):
         if meld['type'] == 'pon':
-            x,y,w,h = get_meld_region(player, melds, i)
+            x, y, w, h = get_meld_region(player, melds, i)
             result = check_tiles(shot[y:y+h,x:x+w], player, debug=False)
             if len(result) == 4:
                 # 这里要复制，不能直接改原meld。
@@ -149,25 +140,18 @@ def rec_kakan(shot):
 
 # 加杠另外单独识别
 # 识别当前玩家是否有新副露
-def rec_new_meld(shot):
+def rec_new_meld(shot, player, melds):
   with timed('rec_new_meld'):
-    player, melds = get_current_player_info()
-    # melds = [{ 'type': 'chi'}, { 'type': 'pon' }, { 'type': 'chi' }]
+    x, y, w, h = get_meld_region(player, melds, len(melds))
+    img = crop_and_preprocess(shot, player, (x, y, w, h))
+    if img.size == 0:
+        return None
+    result = check_tiles(img, player, debug=False)
     # melds = [{ 'type': 'pon'}, { 'type': 'ankan' }, {'type': 'pon'}]
     # melds = [{ 'type': 'chi'}]
     # melds = []
     # player = 'next'
-    x,y,w,h = get_meld_region(player, melds, len(melds))
-    img = crop_and_preprocess(shot, player, (x, y, w, h))
-    if img.size == 0:
-        return None
-    # result = check_tiles(img, player, debug=False)
-    # x,y,w,h = get_meld_region(player, melds, len(melds))
-    # shot = preprocess_screenshot(shot, player)
-    # img = shot[y:y+h, x:x+w]
 
-    result = check_tiles(img, player, debug=False)
-    # print(result)
     meld = None
     if len(result) == 2:
         num, suit = result[0]['tile']
@@ -216,16 +200,6 @@ def rec_new_meld(shot):
     # print(f'check {player} meld result: ', meld)
     return meld
 
-stabled_rec_new_meld = stable_func(rec_new_meld, stable_count=3)
-stabled_rec_kakan = stable_func(rec_kakan)
-
-# 新副露：吃/碰/暗杠/大明杠，扫「下一副露位」识别。
-def check_new_meld(shot):
-    return stabled_rec_new_meld(shot)
-
-# 加杠：既有的碰升级成杠，原地不占新副露位，rec_new_meld 扫不到，需单独识别。
-def check_kakan(shot):
-    return stabled_rec_kakan(shot)
 
 # set_gamestate({'honba': 1, 'kyotaku': 0, 'bakaze': 'S', 'kyoku': 4, 'last_player': 2, 'last_dahai': '7z', 'dora_markers': ['9m'], 'scores': [55800, 18900, 7100, 18200], 'players': [0, 1, 2, 3], 'position': ['across', 'prev', 'self', 'next'], 'current_player': 0, 'player_to_id': {'self': 2, 'next': 3, 'across': 0, 'prev': 1}, 'oya': 3, 'player_info': [{'kawa_index': 7, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 7, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 6, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 7, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 2})
 # for i in range(5):
