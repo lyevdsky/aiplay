@@ -57,7 +57,7 @@ class Game:
       - 被别人 chi/pon/大明杠 后 -1
     副露同理：先写进 melds，再 notify。
     """
-    def __init__(self, listener = None):
+    def __init__(self, listener = None, use_bot = True, watcher = None):
         init_gamestate()
         self.state = get_gamestate()
         self.mjai = []
@@ -67,14 +67,15 @@ class Game:
         self.need_open_dora = 0
         self.phase = Phase.StartGame
         self.remaining_tsumo = 70
-        if IS_DEV:
-            self.bot = None
-        else:
+        if use_bot and not IS_DEV:
+            from mortal.bot import Bot   # 延迟导入：回放测试不加载 AI
             self.bot = Bot()
+        else:
+            self.bot = None
         self.listener = listener
         # watcher 永远起：dev/replay 下两个读取者各持独立游标读同一帧源，
         # 复刻生产环境的并行取帧，main 流程不区分 dev/生产。
-        self.watcher = ChangeWatcher()
+        self.watcher = watcher if watcher is not None else ChangeWatcher()
         self._end = None       # 已取出的终局事件（hora / ryukyoku），EndKyoku 清空
         self._running = True   # main 循环开关；stop() 置 False 让其退出
         self._hotkey_listener = None

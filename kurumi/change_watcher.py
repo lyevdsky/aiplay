@@ -59,7 +59,9 @@ class ChangeWatcher:
     队列内容)，不取帧、不 sleep、不阻塞。
     """
 
-    def __init__(self):
+    def __init__(self, manual=False):
+        # manual=True：不起线程，由外部（回放测试的虚拟时钟）调用 manual_step() 驱动
+        self.manual = manual
         self.player_q = queue.Queue()
         self.tsumo_q = queue.Queue()
         self.end_q = queue.Queue()
@@ -126,6 +128,8 @@ class ChangeWatcher:
         self.error = None
         self._running = True
         get_recorder().log('watcher', 'start')
+        if self.manual:
+            return
         self._thread = threading.Thread(target=self._loop, name='watcher', daemon=True)
         self._thread.start()
 
@@ -273,24 +277,30 @@ class ChangeWatcher:
                     meld['ctx'] = ctx
                     self.meld_q[pid].put(meld)
 
-    def _loop(self):
-        def sleep():
-            time.sleep(POLLING_INTERVAL if not IS_DEV else 0.05)
-
+    def _run_once(self):
+        """一次迭代：取帧 → step。返回 False 表示出现异常、线程应退出。"""
         rec = get_recorder()
-        while self._running:
-            try:
-                shot = get_screenshot()
-                if shot is None or shot is False:
-                    sleep()
-                    continue
+        try:
+            shot = get_screenshot()
+            if shot is not None and shot is not False:
                 self.step(shot, rec.thread_fid())
-            except Exception as e:
-                # 异常不能让线程静默死亡，否则 main 永远等不到信号 → 表现为「卡死」。
-                self.error = e
-                traceback.print_exc()
-                rec.log('watcher', 'crash', err=repr(e), tb=traceback.format_exc())
-                rec.dump('watcher_crash')
-                self._running = False
+        except Exception as e:
+            # 异常不能让线程静默死亡，否则 main 永远等不到信号 → 表现为「卡死」。
+            self.error = e
+            traceback.print_exc()
+            rec.log('watcher', 'crash', err=repr(e), tb=traceback.format_exc())
+            rec.dump('watcher_crash')
+            self._running = False
+            return False
+        return True
+
+    def manual_step(self):
+        """manual 模式下由外部驱动的一次迭代，等价于 _loop 的一轮。"""
+        if self._running:
+            self._run_once()
+
+    def _loop(self):
+        while self._running:
+            if not self._run_once():
                 return
-            sleep()
+            time.sleep(POLLING_INTERVAL if not IS_DEV else 0.05)
