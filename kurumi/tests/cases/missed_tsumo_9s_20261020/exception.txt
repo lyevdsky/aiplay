@@ -1,0 +1,58 @@
+用例：missed_tsumo_9s_20261020
+================================
+
+来源
+  logs/dump/20261020_221909_exception
+  （recorder dump，reason=exception，2000 条帧记录中掉帧 8264 次）
+
+取帧
+  0017090.png – 0017165.png，共 41 帧，frame_ms=100（缺省值），实际覆盖约 8.6 秒
+
+起始状态
+  states.jsonl 中 fid=17078 的 gamestate 快照：
+  东1局，phase=Unknown，current_player=3，last_player=2，last_dahai=1s
+
+问题（bug）
+  player 0 自摸的 9s 没有被识别到。
+
+  立直后快速摸切时，watcher 的采样间隔约 100ms。摸牌那一瞬正好落在两次采样之间：
+  前一帧手上还是 13 张、看不出来摸了什么，下一帧 9s 已经打出去。于是 watcher 只
+  put 了 dahai(9s, tsumogiri=True)，整个 tsumo 事件丢了。main 此时处于 Unknown
+  相位，直接看到的是一条 dahai。
+
+修复方式
+  game.py:426-431（Unknown 相位下识别到自己打牌、且没识别到摸牌）：
+
+      if dahai['tsumogiri']:
+          tsumo = {'tile': dahai['tile']}          # 用打出的牌反推摸牌
+          recorder.log('main', 'miss_tsumo', tile=dahai['tile'])
+          print('未识别到摸牌，补上摸牌{tile}')
+          self.phase = Phase.Tsumo
+      else:
+          raise RuntimeError(
+              'Unknown 阶段识别到自己打牌，未识别到摸牌，且打牌不是摸切')
+
+  摸切时摸到的牌必然就是打出的那张，所以能安全回填；不是摸切（手切）就无法反推摸了
+  什么牌，只能抛异常暴露问题，不能猜。
+
+期望事件流（mjai.jsonl，6 条）
+  {"type": "tsumo",   "actor": 3, "pai": "?"}
+  {"type": "reach",   "actor": 3}
+  {"type": "dahai",   "actor": 3, "pai": "7m", "tsumogiri": false}
+  {"type": "reach_accepted", "actor": 3}
+  {"type": "tsumo",   "actor": 0, "pai": "9s"}
+  {"type": "dahai",   "actor": 0, "pai": "9s", "tsumogiri": true}
+
+  注意第 5 条：它不是识别出来的摸牌，而是由第 6 条的摸切回填的合成事件。
+  回放时控制台会打印红色的「未识别到摸牌，补上摸牌9s」，这是预期输出，不是失败信号；
+  这正是本用例要固定住的行为。
+
+回归意义
+  如果补偿逻辑被删除、改成无条件 raise，或者 tsumogiri 判定失效，回放会在
+  gen_mjai 阶段以 RuntimeError 非 0 退出 / 事件流少一条 tsumo，pytest 即报错。
+  删除 game.py 里这段补偿后，本用例应当失败——可以用这个办法验证用例本身有效。
+
+已知局限
+  帧有掉帧且间隔不均匀（平均 115ms），按 frame_ms=100 回放比真实时间快约 2 倍；
+  起始 state 取的是 fid=17078，比首帧 17090 早约 1.4 秒。
+  换用 refactor 分支的代码跑这份帧，事件流可能不同（那边是 4 家同时识别）。

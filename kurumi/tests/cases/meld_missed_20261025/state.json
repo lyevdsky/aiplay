@@ -1,0 +1,73 @@
+{
+    "bakaze":  "S",
+    "current_player":  1,
+    "dora_markers":  [
+                         "3m"
+                     ],
+    "honba":  0,
+    "kyoku":  3,
+    "kyotaku":  0,
+    "last_dahai":  "4z",
+    "last_player":  0,
+    "my_id":  0,
+    "oya":  2,
+    "phase":  "Dahai",
+    "player_info":  [
+                        {
+                            "kawa_index":  2,
+                            "melds":  [
+
+                                      ],
+                            "riichi":  false,
+                            "riichi_index":  null
+                        },
+                        {
+                            "kawa_index":  1,
+                            "melds":  [
+
+                                      ],
+                            "riichi":  false,
+                            "riichi_index":  null
+                        },
+                        {
+                            "kawa_index":  2,
+                            "melds":  [
+
+                                      ],
+                            "riichi":  false,
+                            "riichi_index":  null
+                        },
+                        {
+                            "kawa_index":  2,
+                            "melds":  [
+
+                                      ],
+                            "riichi":  false,
+                            "riichi_index":  null
+                        }
+                    ],
+    "player_to_id":  {
+                         "across":  2,
+                         "next":  1,
+                         "prev":  3,
+                         "self":  0
+                     },
+    "players":  [
+                    0,
+                    1,
+                    2,
+                    3
+                ],
+    "position":  [
+                     "self",
+                     "next",
+                     "across",
+                     "prev"
+                 ],
+    "scores":  [
+                   24300,
+                   54500,
+                   12300,
+                   8900
+               ]
+}

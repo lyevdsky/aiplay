@@ -54,5 +54,6 @@ yolo/dataset
 kurumi/imgs
 kurumi/video
 kurumi/ref/yolo
+kurumi/tests/cases/*/frames/
 
 yolo/yolo26n.pt

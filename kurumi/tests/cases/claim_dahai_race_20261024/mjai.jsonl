@@ -1,0 +1,3 @@
+{"type": "dahai", "actor": 2, "pai": "9s", "tsumogiri": false}
+{"type": "pon", "consumed": ["9s", "9s"], "pai": "9s", "actor": 0, "target": 2}
+{"type": "dahai", "actor": 0, "pai": "1p", "tsumogiri": false}

@@ -1,0 +1,73 @@
+{
+    "bakaze":  "E",
+    "current_player":  1,
+    "dora_markers":  [
+                         "7z"
+                     ],
+    "honba":  2,
+    "kyoku":  3,
+    "kyotaku":  0,
+    "last_dahai":  "7p",
+    "last_player":  0,
+    "my_id":  0,
+    "oya":  2,
+    "phase":  "Tsumo",
+    "player_info":  [
+                        {
+                            "kawa_index":  15,
+                            "melds":  [
+
+                                      ],
+                            "riichi":  false,
+                            "riichi_index":  null
+                        },
+                        {
+                            "kawa_index":  14,
+                            "melds":  [
+
+                                      ],
+                            "riichi":  false,
+                            "riichi_index":  null
+                        },
+                        {
+                            "kawa_index":  15,
+                            "melds":  [
+
+                                      ],
+                            "riichi":  true,
+                            "riichi_index":  null
+                        },
+                        {
+                            "kawa_index":  15,
+                            "melds":  [
+
+                                      ],
+                            "riichi":  false,
+                            "riichi_index":  null
+                        }
+                    ],
+    "player_to_id":  {
+                         "across":  2,
+                         "next":  1,
+                         "prev":  3,
+                         "self":  0
+                     },
+    "players":  [
+                    0,
+                    1,
+                    2,
+                    3
+                ],
+    "position":  [
+                     "self",
+                     "next",
+                     "across",
+                     "prev"
+                 ],
+    "scores":  [
+                   38000,
+                   23800,
+                   22200,
+                   16000
+               ]
+}

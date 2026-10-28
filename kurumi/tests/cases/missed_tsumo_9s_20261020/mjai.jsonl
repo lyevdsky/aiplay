@@ -1,0 +1,6 @@
+{"type": "tsumo", "actor": 3, "pai": "?"}
+{"type": "reach", "actor": 3}
+{"type": "dahai", "actor": 3, "pai": "7m", "tsumogiri": false}
+{"type": "reach_accepted", "actor": 3}
+{"type": "tsumo", "actor": 0, "pai": "9s"}
+{"type": "dahai", "actor": 0, "pai": "9s", "tsumogiri": true}

@@ -1,0 +1,51 @@
+用例：skipped_dahai_after_reach_20261023
+========================================
+
+来源
+  logs/dump/20261023_154928_exception
+  （recorder dump，reason=exception，200 帧）
+
+取帧
+  0011440.png – 0011494.png，共 55 帧，frame_ms=100（缺省值）
+  原始采样平均 113ms，实际覆盖约 6 秒
+
+起始状态
+  states.jsonl 中 fid=11452 的 gamestate 快照，phase 改为 Tsumo：
+  东3局，current_player=1，last_player=0，last_dahai=7p
+  （11440 处没有快照，11452 是最近的一个；它比首帧晚 12 帧）
+
+问题（bug）
+  立直动画遮挡牌河，导致下家的整手摸打被跳过。
+
+  时序：
+      玩家 1 摸牌 < ? >        玩家 1 立直   玩家 1 打 5z（宣言牌）
+      玩家 2 摸切 3m           ← 这两帧在旧实现里完全没被识别到
+      玩家 3 摸牌 < ? >        玩家 3 打 2p
+
+  玩家 1 立直后打出宣言牌 5z，牌河被立直动画（立直棒 / 特效）盖住；下家玩家 2
+  很快摸打，正好落在动画期间。旧实现里这两帧一次都没识别到，于是 main 从
+  last_player=1 直接切到 player=3，玩家 2 的一手整个丢失，触发轮转校验：
+
+      RuntimeError: Unknown 阶段直接识别到打牌，但 last_player(1) 不是
+      player(3) 的上家 2，说明有副露未被识别
+
+  注意这条消息是**误导性的**：它假设轮转错位只可能由漏识别副露引起，而本例根本
+  没有副露，是普通轮转里漏了一手 dahai。
+
+refactor（812b371）上的行为
+  8 条事件，无异常：
+
+      {"type": "tsumo",  "actor": 1, "pai": "?"}
+      {"type": "reach",  "actor": 1}
+      {"type": "dahai",  "actor": 1, "pai": "5z", "tsumogiri": false}
+      {"type": "reach_accepted", "actor": 1}
+      {"type": "tsumo",  "actor": 2, "pai": "?"}
+      {"type": "dahai",  "actor": 2, "pai": "3m", "tsumogiri": true}
+      {"type": "tsumo",  "actor": 3, "pai": "?"}
+      {"type": "dahai",  "actor": 3, "pai": "2p", "tsumogiri": false}
+
+  玩家 2 的摸切 3m 被正常识别，手番连续，不再抛异常。
+
+已知局限
+  11440 处没有对应快照，state 取自 11452（晚 12 帧），phase 是手工改成 Tsumo 的；
+  refactor 的 watcher 对每家独立推进游标，这份基线只对 refactor 有意义。

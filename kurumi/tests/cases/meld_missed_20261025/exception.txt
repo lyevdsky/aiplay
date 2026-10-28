@@ -1,0 +1,18 @@
+wait new kyoku
+Starting new kyoku...
+kyoku info:  {'oya': 'across', 'honba': 0, 'kyotaku': 0, 'bakaze': 'S', 'kyoku': 3, 'dora_marker': '3m', 'scores': [24300, 54500, 12300, 8900]}
+hand:  ['2m', '5m', '7m', '2p', '2p', '3p', '7p', '2s', '4s', '6s', '4z', '6z', '6z']
+update gamestate:  {'honba': 0, 'kyotaku': 0, 'bakaze': 'S', 'kyoku': 3, 'phase': None, 'last_player': None, 'last_dahai': None, 'dora_markers': ['3m'], 'scores': [24300, 54500, 12300, 8900], 'players': [0, 1, 2, 3], 'position': ['self', 'next', 'across', 'prev'], 'current_player': 2, 'player_to_id': {'self': 0, 'next': 1, 'across': 2, 'prev': 3}, 'oya': 2, 'player_info': [{'kawa_index': 0, 'riichi_index': None, 'melds': [], 'riichi': False}, {'kawa_index': 0, 'riichi_index': None, 'riichi': False, 'melds': []}, {'kawa_index': 0, 'riichi': False, 'riichi_index': None, 'melds': []}, {'kawa_index': 0, 'riichi': False, 'riichi_index': None, 'melds': []}], 'my_id': 0}
+ [GAME] 玩家 2 摸牌 < ? > 
+ [GAME] 玩家 2 打 9s 
+ [GAME] 玩家 0 摸牌 < 7s > 
+ [GAME] 玩家 0 打 1z 
+ [GAME] 玩家 1 摸牌 < ? > 
+ [GAME] 玩家 1 打 8m 
+Traceback (most recent call last):
+  File "C:\game\code\mjai\aiplay\kurumi\tests\gen_mjai.py", line 130, in main
+    game.main()
+  File "C:\game\code\mjai\aiplay\kurumi\game.py", line 413, in main
+    raise RuntimeError(
+RuntimeError: Unknown 阶段直接识别到打牌，但 last_player(1) 不是 player(3) 的上家 2，说明有副露未被识别
+回放过程中抛出异常，未生成 mjai.jsonl
