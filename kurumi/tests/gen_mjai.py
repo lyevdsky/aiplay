@@ -6,10 +6,11 @@
     python tests/gen_mjai.py <frames_dir> -o out.jsonl       # 指定输出
 
 默认输出到 <frames_dir 的上级目录>/mjai.jsonl，即 tests/cases/<name>/mjai.jsonl。
-帧间隔固定 50ms。gs.json 是 gamestate 字典，可带 "phase"（Tsumo/Dahai/Claim ...，缺省 Tsumo）。
+帧间隔由用例目录的 meta.json 的 "frame_ms" 决定（缺省 100），须与实际抽帧间隔一致。
+gs.json 是 gamestate 字典，可带 "phase"（Tsumo/Dahai/Claim ...，缺省 Tsumo）。
 
 确定性：单线程 + 虚拟时钟。watcher 不起线程，main 每次 time.sleep 都让虚拟时间前进，
-期间按 POLLING_INTERVAL 在当前帧上手动跑 watcher.step；当前帧 = frames[虚拟时间 // 50ms]。
+期间按 POLLING_INTERVAL 在当前帧上手动跑 watcher.step；当前帧 = frames[虚拟时间 // frame_ms]。
 """
 import argparse
 import json
@@ -21,7 +22,7 @@ from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
-FRAME_MS = 50
+FRAME_MS = 100         # 缺省帧间隔；实际以 meta.json 的 frame_ms 为准
 FRAME_EXTS = ('.jpg', '.jpeg', '.png')
 
 
@@ -32,9 +33,10 @@ class ReplayFinished(Exception):
 class VirtualClock:
     """整数毫秒虚拟时钟，避免浮点累加误差导致 watcher 节拍漂移。"""
 
-    def __init__(self, files, poll_ms):
+    def __init__(self, files, poll_ms, frame_ms=FRAME_MS):
         self.files = files
         self.poll_ms = poll_ms
+        self.frame_ms = frame_ms
         self.now_ms = 0
         self.watcher = None
         self.events = None       # game.mjai（同一个 list）
@@ -45,7 +47,7 @@ class VirtualClock:
     def frame(self):
         import cv2
         import numpy as np
-        idx = min(self.now_ms // FRAME_MS, len(self.files) - 1)
+        idx = min(self.now_ms // self.frame_ms, len(self.files) - 1)
         if self._cache[0] != idx:
             data = np.fromfile(str(self.files[idx]), dtype=np.uint8)
             img = cv2.imdecode(data, cv2.IMREAD_COLOR)
@@ -56,7 +58,7 @@ class VirtualClock:
 
     def _advance(self, t_ms):
         self.now_ms = max(self.now_ms, t_ms)
-        if self.now_ms // FRAME_MS >= len(self.files):
+        if self.now_ms // self.frame_ms >= len(self.files):
             if self.cut is None:
                 self.cut = len(self.events)
             raise ReplayFinished()
@@ -89,6 +91,11 @@ def main():
 
     frames_dir = Path(args.frames).resolve()
     out_path = Path(args.output).resolve() if args.output else frames_dir.parent / 'mjai.jsonl'
+    meta = {}
+    meta_path = frames_dir.parent / 'meta.json'
+    if meta_path.exists():
+        meta = json.loads(meta_path.read_text(encoding='utf-8'))
+    frame_ms = int(meta.get('frame_ms', FRAME_MS))
     state = json.loads(Path(args.state).read_text(encoding='utf-8')) if args.state else None
     files = sorted(p for p in frames_dir.iterdir() if p.suffix.lower() in FRAME_EXTS)
     if not files:
@@ -111,7 +118,7 @@ def main():
         game.start_with_state(state)
         game.phase = Phase[str(phase).split('.')[-1]]
 
-    clock = VirtualClock(files, int(round(POLLING_INTERVAL * 1000)))
+    clock = VirtualClock(files, int(round(POLLING_INTERVAL * 1000)), frame_ms)
     clock.watcher = watcher
     clock.events = game.mjai
 

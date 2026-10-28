@@ -13,6 +13,10 @@ from util import stable_func
 from config import POLLING_INTERVAL, IS_DEV
 from debug.recorder import get_recorder
 
+# 打牌因为「同家副露尚未入队」被压住的最多帧数；超过就放行并记日志，
+# 防止副露位被特效之类的画面误判后永久挡住这家打牌。
+MELD_HOLD_MAX = 10
+
 
 # ------------------------------------------------------------------ 单项观测
 # 观测函数返回 (ctx, 结果) 或 None。把 ctx 一起放进被去抖的值里：
@@ -79,6 +83,8 @@ class ChangeWatcher:
 
         self._current_player = None
         self._player_to_id = None
+        # 打牌因「同家副露未入队」被推迟的次数（防误判永久挡住）
+        self._meld_hold = [0] * 4
         self._stable = {}                # (pid, kind) -> stable_func 实例，纯去抖
         self._running = False
         self._thread = None
@@ -258,6 +264,12 @@ class ChangeWatcher:
             # 打牌：该玩家 kawa_index 格
             if self.dahai_q[pid].empty():
                 res = self._st(pid, 'dahai', _obs_dahai, stable_count=3)(shot, v)
+                if res is not None and self._hold_for_meld(pid, shot, v):
+                    # 这家有一手副露已经认出来、但还没进 meld_q：
+                    # 打牌动画和鸣牌动画重叠时打牌会先出来，这里先压住，
+                    # 等副露入队、被 main 消费之后再放。
+                    out[f'dahai{pid}_hold'] = True
+                    res = None
                 if res is not None:
                     ctx, (tile, tsumogiri, riichi) = res
                     out[f'dahai{pid}'] = (tile, tsumogiri, riichi)
@@ -276,6 +288,27 @@ class ChangeWatcher:
                     meld = dict(meld)
                     meld['ctx'] = ctx
                     self.meld_q[pid].put(meld)
+
+    def _hold_for_meld(self, pid, shot, v):
+        """该玩家有一手新副露「已认出但还没入 meld_q」时返回 True，用来压住他的打牌。
+
+        打牌动画与鸣牌动画重叠时，打牌会先被识别出来（~1-3 帧），副露则要等动画落定
+        才认得出。不压住的话 main 会先看到打牌、断定「没人鸣牌」，把「鸣牌后打牌」
+        当成「摸牌后打牌」，整条手番就错了。
+        """
+        if not self.meld_q[pid].empty():      # 副露已入队 → 顺序已经安全
+            self._meld_hold[pid] = 0
+            return False
+        if rec_new_meld(shot, v['pos'], v['melds']) is None:
+            self._meld_hold[pid] = 0
+            return False
+        self._meld_hold[pid] += 1
+        if self._meld_hold[pid] > MELD_HOLD_MAX:   # 兜底：误判时不至于永久压住
+            get_recorder().log('watcher', 'meld_hold_timeout', pid=pid,
+                               n=self._meld_hold[pid])
+            self._meld_hold[pid] = 0
+            return False
+        return True
 
     def _run_once(self):
         """一次迭代：取帧 → step。返回 False 表示出现异常、线程应退出。"""

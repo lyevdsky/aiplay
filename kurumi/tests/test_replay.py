@@ -1,4 +1,4 @@
-"""pytest：tests/cases/<name>/{frames/, mjai.jsonl, state.json?}，
+"""pytest：tests/cases/<name>/{frames/, mjai.jsonl, state.json?, meta.json?}，
 用 gen_mjai.py 重放生成，与期望的 mjai.jsonl 比对。每个用例一个子进程，状态互不串扰。"""
 import json
 import os
@@ -27,5 +27,7 @@ def test_replay(case, tmp_path):
         cmd += ['--state', str(case / 'state.json')]
     r = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace',
                        env={**os.environ, 'PYTHONIOENCODING': 'utf-8'})
-    assert r.returncode == 0, r.stdout[-4000:] + r.stderr[-4000:]
+    log = r.stdout[-4000:] + r.stderr[-4000:]
+    assert r.returncode == 0, log
+    assert out.exists(), f'回放成功但没有产出 {out}\n{log}'
     assert load(out) == load(case / 'mjai.jsonl')

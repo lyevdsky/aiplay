@@ -1,0 +1,111 @@
+用例：meld_late_vs_dahai_20261028
+==================================
+
+来源
+  logs/dump/20261028_211606_exception
+  （recorder dump，reason=exception，200 帧）
+
+取帧
+  0023698.png – 0023804.png，共 107 帧，frame_ms=100（缺省值）
+  原始采样约 113ms
+
+起始状态
+  states.jsonl 中 fid=23698 的 gamestate 快照，未做任何改动：
+  phase=Claim，current_player=3，last_player=3，last_dahai=9m，
+  kawa=[4,3,1,3]，melds=[2,0,0,1]，my_id=2，东四局
+  即「玩家 3 刚打出 9m，main 正在等别家鸣牌」的那一刻。
+
+现象
+  旧实现下回放这份帧，直接抛：
+
+      RuntimeError: 玩家 0 识别到吃，但打牌者 1 不是其上家，副露识别有误
+      （game.py:391-402 _find_claim）
+
+  抛出位置是「吃的座位校验」：吃只允许吃上家，q 必须是 (p+1)%4。
+  当时 p=1、q=0，而合法值应为 2。
+
+根因：副露比打牌晚 1-3 帧被识别
+  实际发生的是：玩家 3 打 9m → 玩家 0 吃 9m（7m+8m）→ 玩家 0 立刻打 2p。
+  游戏侧「吃」的动画和「打 2p」的动画叠在一起，而打 2p 的手正好压在
+  玩家 0 的副露区上方。
+
+  时序（fid）：
+      23697  玩家 3 打 9m（摸切），main 进 Claim(p=3)
+      23724  main 把玩家 0 的 2p 当成「下家已行动」的证据，
+             补了一次占位的「玩家 0 摸牌 ?」，然后吃下 2p
+      23727  watcher 才把 chi(7m,8m)+9m 放进 meld_q[0]
+      23804  玩家 1 打 6p，_find_claim(1) 扫到玩家 0 队列里那条陈旧的吃
+             → 座位校验失败 → 抛异常
+
+  两个关键因素：
+  1. 打牌比副露早：手挡住副露区，副露要等动画落定才认得出（本例 1-3 帧）；
+  2. 副露事件的 ctx 是「识别那一刻」采的（玩家, kawa_index, 副露类型序列），
+     不含「吃的是哪张牌」。玩家 0 此后没再行动，这条吃的 ctx 就一直匹配，
+     于是它活过了自己的 Claim 阶段，最后被算到玩家 1 的 6p 头上。
+
+  注意：`ctx` 只能证明「鸣牌者自己的状态没变」，不能证明「这就是对当前这手
+  打牌的鸣牌」。这是这条异常能发生的深层原因，但本次修复针对的是第 1 点。
+
+实测依据（本 dump 的四家副露槽位）
+  | fid   | 玩家0(吃的那家) | 玩家1 | 玩家2 | 玩家3 |
+  |-------|----------------|-------|-------|-------|
+  | 23700 | 0 张           | 0     | 0     | 0     |
+  | 23720 | 2 张（成型中） | 0     | 0     | 0     |
+  | 23724 | 3 张（已成型） | 0     | 0     | 0     |
+  | 23730 | 3 张           | 0     | 0     | 0     |
+
+  「张数」用 check_tiles 判定（WHILE_HSV 亮白 + Meld 的最小面积/宽高比），
+  空槽在四家都是 0，不会被 UI 亮块干扰。
+
+修复
+  change_watcher.py 新增 `_hold_for_meld()`，并在四家循环里、打牌 put 之前调用：
+
+      res = self._st(pid, 'dahai', _obs_dahai, stable_count=3)(shot, v)
+      if res is not None and self._hold_for_meld(pid, shot, v):
+          out[f'dahai{pid}_hold'] = True
+          res = None                     # 这手打牌先不入队
+
+  判定条件（按玩家分别判断，只影响该家自己）：
+
+      if not self.meld_q[pid].empty():                     # 副露已入队 → 顺序安全
+          return False
+      if rec_new_meld(shot, v['pos'], v['melds']) is None: # 没有待处理的新副露
+          return False
+      return True                                          # 压住这手打牌
+
+  也就是直接复用 rec_new_meld 当门闩：它返回非 None，说明这家有一手新副露
+  已经认出来了、但还没进 meld_q —— 此时打牌不该先入队。
+
+  为什么顺序会自愈：打牌被压住时 `_obs_dahai` 的去抖结果不变，牌不会丢；
+  副露入队后被 main 的 Claim 阶段先取走（`_find_claim` 优先于
+  `_next_actor_evidence`），鸣牌生效、melds 推进到下一格，副露槽变空，
+  这手打牌才被放行，正好由随后的 Dahai 阶段取走。
+
+  兜底：同一家连续压住超过 MELD_HOLD_MAX(=10) 帧就放行并记
+  `meld_hold_timeout`，防止副露位被特效之类的东西误判后永久挡住打牌。
+
+修复前后对比（同一份 107 帧、同一个 state）
+  关闭门闩（MELD_HOLD_MAX=0）：
+      玩家 0 摸牌 < ? >   玩家 0 打 2p   玩家 1 摸切 6p
+      → RuntimeError: 玩家 0 识别到吃，但打牌者 1 不是其上家，副露识别有误
+  开启门闩（当前实现）：
+      {"type": "chi",   "consumed": ["7m","8m"], "pai": "9m", "actor": 0, "target": 3}
+      {"type": "dahai", "actor": 0, "pai": "2p", "tsumogiri": false}
+      {"type": "tsumo", "actor": 1, "pai": "?"}
+      {"type": "dahai", "actor": 1, "pai": "6p", "tsumogiri": true}
+
+  注意 chi 排在 dahai 2p 之前 —— 这正是本用例要固定住的顺序。
+
+回归意义
+  如果以后副露又被提前接受（门闩失效），事件流会退化：
+  少了 chi、多了「玩家 0 摸牌 ?」，或者直接抛座位校验异常 —— 两种都会让
+  test_replay 失败。
+
+已知局限
+  1. `rec_new_meld` 只在副露位有 3/4 张牌、且能分类成功时才返回非 None。
+     如果某次动画比打牌确认还慢（副露还只有 1-2 张时打牌就已经稳定），
+     门闩不会触发，漏副露的窗口仍然存在。要彻底关掉这个窗口，得用
+     「副露位有牌就算脏」（张数 > 0）而不是 rec_new_meld 的返回值。
+  2. 结束 phase 为 Claim 起始，帧从 23698 开始，所以 9m 那一手打牌本身
+     不在事件流里（它发生在 state 之前）。
+  3. 只对 refactor 分支有意义：tests 分支没有 4 家并行队列的设计。

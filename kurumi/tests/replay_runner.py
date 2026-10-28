@@ -10,7 +10,7 @@
           mjai.jsonl              # 期望的 mjai 事件流，一行一个事件
           state.json              # 可选：从对局中途开始，见下
           meta.json               # 可选：
-                                  #   frame_ms     帧间隔毫秒，缺省 50
+                                  #   frame_ms     帧间隔毫秒，缺省 100
                                   #   frames       帧目录（相对用例目录），缺省 "frames"；
                                   #                多个用例可共用一份长录像
                                   #   start_frame / end_frame   切片 [start, end)，按排序后的序号
@@ -55,7 +55,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 CASES_DIR = HERE / 'cases'
 OUT_DIR = HERE / 'out'
-DEFAULT_FRAME_MS = 50
+DEFAULT_FRAME_MS = 100
 FRAME_EXTS = ('.jpg', '.jpeg', '.png')
 
 
@@ -204,10 +204,12 @@ def run_case(case_dir, update=False):
     clock = VirtualClock(files, frame_ms, int(round(POLLING_INTERVAL * 1000)))
     clock.watcher = watcher
     clock.events = game.mjai
-    screenshot.set_frame_provider(clock.frame)
 
     error = None
-    with mock.patch('time.sleep', clock.sleep):
+    # 帧由虚拟时间决定，替换取帧入口（与 gen_mjai.py 同一做法；
+    # 本分支的 screenshot 没有 set_frame_provider，只有 _read_source）
+    with mock.patch('time.sleep', clock.sleep), \
+            mock.patch.object(screenshot, '_read_source', clock.frame):
         try:
             game.main()
         except ReplayFinished:
@@ -216,7 +218,6 @@ def run_case(case_dir, update=False):
             error = traceback.format_exc()
         finally:
             watcher.stop()
-            screenshot.set_frame_provider(None)
 
     # 帧耗尽后 wait_new_kyoku 的裸 except 会吞掉 ReplayFinished 并走到 EndGame，
     # 那之后产生的事件不是真实对局的一部分，按耗尽时刻截断。

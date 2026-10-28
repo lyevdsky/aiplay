@@ -1,0 +1,4 @@
+{"type": "chi", "consumed": ["7m", "8m"], "pai": "9m", "actor": 0, "target": 3}
+{"type": "dahai", "actor": 0, "pai": "2p", "tsumogiri": false}
+{"type": "tsumo", "actor": 1, "pai": "?"}
+{"type": "dahai", "actor": 1, "pai": "6p", "tsumogiri": true}
