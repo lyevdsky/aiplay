@@ -78,6 +78,7 @@ class Game:
         self.watcher = watcher if watcher is not None else ChangeWatcher()
         self._end = None       # 已取出的终局事件（hora / ryukyoku），EndKyoku 清空
         self._running = True   # main 循环开关；stop() 置 False 让其退出
+        self._game_started = False  # start_game 只发一次：之后各局共用同一个 bot
         self._hotkey_listener = None
         
     def start_hotkeys(self):
@@ -170,6 +171,12 @@ class Game:
         state['player_to_id'] = player_to_id
         state['position'] = position
         state['my_id'] = player_to_id['self']
+
+        # 一局只加载一次 AI：my_id 到这里才识别出来，所以 start_game 发在这里，
+        # 后续各 kyoku 都复用同一个 bot（PlayerState 会在 start_kyoku 里自行 reset）。
+        if not self._game_started:
+            self._game_started = True
+            self.notify({ 'type': 'start_game' })
 
         # 每局一条监视线程：设手番基准后拉起，终局中断时线程自退
         self.watcher.reset(oya_id, player_to_id)
@@ -557,10 +564,11 @@ class Game:
             return
         
         with timed('bot.react(AI)'):
-            if message['type'] == 'start_kyoku':
+            if message['type'] == 'start_game':
                 self.bot.start(self.state['my_id'])
                 react = self.bot.react(message)
-            elif message['type'] == 'end_kyoku':
+            elif message['type'] == 'end_game':
+                # 必须先 react 再 end：反过来会 react 到已经释放的 AI（AttributeError）
                 react = self.bot.react(message)
                 self.bot.end()
             else:
