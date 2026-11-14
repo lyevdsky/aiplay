@@ -1,0 +1,103 @@
+用例：missed_tsumo_fast_discard_20261114
+========================================
+
+来源
+  logs/dump/20261114_201414_exception
+  （recorder dump，reason=exception，200 帧）
+
+取帧
+  0128130.png – 0128220.png，共 91 帧，frame_ms=100（缺省值）
+
+起始状态
+  states.jsonl 中 fid=128072 的 gamestate 快照：
+  phase=Claim，current_player=0，last_player=0，last_dahai=4p，
+  kawa=[11,10,10,10]，melds=[0,0,0,0]，my_id=2，东一局
+
+  注意 128130 处没有快照。128072 之后 main 一直卡在 Claim(p=0)，没有任何推进，
+  直到 128143 才动，所以 128072 的 gs 与 128130 时刻完全一致，可以原样使用。
+
+现象
+  旧实现下这份帧会在 128220 抛：
+
+      RuntimeError: ('AI React Error',
+        'on event Dahai { actor: 2, pai: 9s, tsumogiri: true }
+         Caused by: rule violation: attempt to discard 9s from void')
+
+  即 main 告诉 AI「你摸到 3z、现在打 9s」，而 AI 手里没有 9s —— 这两条事件来自
+  不同巡：打牌是 70 帧前的，摸牌是 70 帧后的。
+
+时序
+  128071         玩家 0 打 4p → main 进 Claim(p=0)，current_player=0
+  128137–128143  自己（玩家 2）摸到 9s，14 张手牌在画面上存在了 7 帧
+  128143         watcher 才确认玩家 1 的立直宣言牌 6m → main 推进到 cur=1
+  128150         watcher put 自己的 dahai 9s(tsumogiri) → main 进 Tsumo(cur=2)
+  128150–128219  main 在 Tsumo 阶段等自己的摸牌，卡了 70 帧，
+                 期间玩家 3/0/1 又打了一整轮
+  128220         等来 tsumo 3z（下一巡的摸牌），立刻与 70 帧前那条 9s 配对 → AI 报错
+
+根因一：摸牌检查被 cur 限制，main 落后时窗口整段关闭
+  change_watcher._step 原来是：
+
+      if (cur == my_id or (cur + 1) % 4 == my_id) and self.tsumo_q.empty():
+          tile = check_tsumo(shot)
+
+  cur 是 main 的 current_player，不是画面上的真实手番。立直动画让玩家 1 的宣言牌
+  确认得晚，main 一直停在 cur=0；而真实牌局已经轮到自己了：
+
+      cur == my_id          → 0 != 2  ✗
+      (cur + 1) % 4 == my_id → 1 != 2  ✗
+
+  两个条件都不成立，check_tsumo 一次都没被调用。实测（逐帧调用 rec_tsumo）：
+
+      128136 None
+      128137 9s     ←
+      128138 9s
+      ...
+      128143 9s     ← 窗口共 7 帧
+      128144 None
+
+  识别能力本身没问题，是根本没去查。等 main 在 128143 推进、窗口打开时，
+  只剩 1 帧，stable_func 要连续 2 帧，于是彻底错过。
+
+根因二：漏摸之后 main 死等，并与后来的摸牌配错
+  Tsumo 阶段对自家只会从 tsumo_q 取事件，取不到就 sleep。摸牌被漏掉后它会一直等，
+  把后面整轮的手番都憋住；等到下一巡的摸牌终于进来，就打出了「新摸牌 + 旧打牌」，
+  AI 的 PlayerState 与实际手牌彻底错位。
+
+修复
+  ① game.py Tsumo 分支回填（兜底）
+     摸牌取不到时先 peek 自己的打牌队列：如果这手打牌是摸切，打出的那张必然就是
+     刚摸到的牌，直接回填；非摸切无法反推，维持继续等待。
+
+         ev = self._take(w.tsumo_q, player, 'tsumo_q')
+         if ev is None:
+             d = w.peek(w.dahai_q[player], w.ctx_of(player))
+             if d is None or not d.get('tsumogiri'):
+                 time.sleep(INTERVAL_TIME); continue
+             tile = d['tile']
+             recorder.log('main', 'miss_tsumo', tile=tile)
+         else:
+             tile = ev['tile']
+
+  ② change_watcher.py 去掉 cur 限制（治本）
+     只要 tsumo_q 空就查，不再按 main 的 current_player 猜窗口 —— 它跟不上真实手番。
+
+验证
+  · 修复后回放这 91 帧：11 条事件，无异常，其中
+        {"type": "tsumo", "actor": 2, "pai": "9s"}
+        {"type": "dahai", "actor": 2, "pai": "9s", "tsumogiri": true}
+    并且后面玩家 3 / 玩家 0 的手番正常继续（旧代码在这里已经卡死了）。
+  · 单独验证回填：把 check_tsumo 强制返回 None（模拟摸牌彻底没认出来）再回放，
+    控制台出现「未识别到摸牌，补上摸牌9s」，事件流与上面完全一致（11 条）。
+    说明两条修复各自独立生效。
+
+回归意义
+  如果摸牌窗口又被收紧，或回填被删掉，本用例会退化成：
+  少了 tsumo 2 9s、或者直接抛 AI React Error —— 两种都会让 test_replay 失败。
+
+已知局限
+  1. 非摸切（手切）时无法反推摸到的牌，回填不适用，仍会继续等待。这类只能靠 ②
+     把窗口放大来避免。
+  2. 去掉 cur 限制后每帧都会调用 check_tsumo（rec_tsumo → check_tile），实测约
+     1–4ms/次，相对每帧 ~60ms 的取图开销可接受，但不是零成本。
+  3. 起始 phase 为 Claim，所以玩家 0 打 4p 那一手不在事件流里。

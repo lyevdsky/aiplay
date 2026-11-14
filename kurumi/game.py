@@ -443,9 +443,19 @@ class Game:
                 if player == state['my_id']:
                     ev = self._take(w.tsumo_q, player, 'tsumo_q')
                     if ev is None:
-                        time.sleep(INTERVAL_TIME)
-                        continue
-                    tile = ev['tile']
+                        # 摸牌可能整个落在两次采样之间（摸到就打、打得太快），
+                        # 这时打牌已经进队了。自己手牌 13 张时打出的牌如果又是摸切，
+                        # 那它就是刚摸到的牌 —— 直接回填，否则会一直等一个永远不来的摸牌。
+                        # 因为rec_tsumo已经不在限制当前cur，所以下面的兜底方案可能用不上。
+                        d = w.peek(w.dahai_q[player], w.ctx_of(player))
+                        if d is None or not d.get('tsumogiri'):
+                            time.sleep(INTERVAL_TIME)
+                            continue
+                        tile = d['tile']
+                        get_recorder().log('main', 'miss_tsumo', tile=tile)
+                        print_with_color(f'未识别到摸牌，补上摸牌{tile}', 'red')
+                    else:
+                        tile = ev['tile']
                 else:
                     tile = '?'
 

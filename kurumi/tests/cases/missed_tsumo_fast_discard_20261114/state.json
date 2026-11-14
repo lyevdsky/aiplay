@@ -1,0 +1,73 @@
+{
+    "bakaze":  "E",
+    "current_player":  0,
+    "dora_markers":  [
+                         "4s"
+                     ],
+    "honba":  1,
+    "kyoku":  1,
+    "kyotaku":  0,
+    "last_dahai":  "4p",
+    "last_player":  0,
+    "my_id":  2,
+    "oya":  0,
+    "phase":  "Claim",
+    "player_info":  [
+                        {
+                            "kawa_index":  11,
+                            "melds":  [
+
+                                      ],
+                            "riichi":  false,
+                            "riichi_index":  null
+                        },
+                        {
+                            "kawa_index":  10,
+                            "melds":  [
+
+                                      ],
+                            "riichi":  false,
+                            "riichi_index":  null
+                        },
+                        {
+                            "kawa_index":  10,
+                            "melds":  [
+
+                                      ],
+                            "riichi":  true,
+                            "riichi_index":  null
+                        },
+                        {
+                            "kawa_index":  10,
+                            "melds":  [
+
+                                      ],
+                            "riichi":  false,
+                            "riichi_index":  null
+                        }
+                    ],
+    "player_to_id":  {
+                         "across":  0,
+                         "next":  3,
+                         "prev":  1,
+                         "self":  2
+                     },
+    "players":  [
+                    0,
+                    1,
+                    2,
+                    3
+                ],
+    "position":  [
+                     "across",
+                     "prev",
+                     "self",
+                     "next"
+                 ],
+    "scores":  [
+                   37000,
+                   13000,
+                   25000,
+                   25000
+               ]
+}

@@ -250,8 +250,10 @@ class ChangeWatcher:
         my_id = self._player_to_id['self']
         out['cur'] = cur
 
-        # 自己摸牌：自己手番，或下一手轮到自己（Claim 阶段要靠它判断）
-        if (cur == my_id or (cur + 1) % 4 == my_id) and self.tsumo_q.empty():
+        # 自己摸牌：队列空就查，不能按 cur 限制。
+        # cur 是 main 的 current_player，立直/鸣牌动画会让它落后真实手番整整一巡；
+        # 那时自己可能已经摸完并摸切，按 cur 判断窗口会整段错过摸牌。
+        if self.tsumo_q.empty():
             tile = check_tsumo(shot)
             out['tsumo'] = tile
             if tile is not None:
