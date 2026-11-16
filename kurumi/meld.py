@@ -122,6 +122,42 @@ def get_meld_region(player, melds, index):
     return list((int(x) for x in region))
 
 
+# 被鸣者相对 claimer 的座位偏移（1=next, 2=across, 3=prev）。
+# 副露里「旋转的那张」指向被鸣者，按 claimer 自己的坐标系排列：
+#   自己视角的 左=上家、中=对家、右=下家。
+# self/across 的副露横向排（屏幕左→右），next/prev 竖向排（屏幕 上→下）。
+MELD_TARGET_ORDER = {
+    'self':   [3, 2, 1],   # 屏幕 左→右：上家、对家、下家
+    'across': [1, 2, 3],   # 屏幕 左→右：下家、对家、上家（视角旋转 180°）
+    'next':   [1, 2, 3],   # 屏幕 上→下：下家、对家、上家
+    'prev':   [3, 2, 1],   # 屏幕 上→下：上家、对家、下家
+}
+
+
+def meld_target(player, result):
+    """从旋转牌在副露里的位置推出被鸣者的 player id；推不出返回 None。"""
+    if len(result) < 3:
+        return None
+    rotated = None
+    for i, r in enumerate(result):
+        if r['direction'] != player:
+            rotated = i
+            break
+    if rotated is None:
+        return None
+    axis = 0 if player in ('self', 'across') else 1
+    order = sorted(range(len(result)), key=lambda i: result[i]['region'][axis])
+    pos = order.index(rotated)
+    seq = MELD_TARGET_ORDER.get(player)
+    if seq is None or pos >= len(seq):
+        return None
+    offset = seq[pos]
+    pid = get_gamestate()['player_to_id'].get(player)
+    if pid is None:
+        return None
+    return (pid + offset) % 4
+
+
 # 识别是否存在加杠
 def rec_kakan(shot, player, melds):
     for i, meld in enumerate(melds):
@@ -184,17 +220,20 @@ def rec_new_meld(shot, player, melds):
         # 识别异常直接返回None
         if len(consumed) != 2:
             return None
+        target = meld_target(player, result)
         if consumed[0] == consumed[1] or consumed[0] == tile or consumed[1] == tile:
             meld = {
                 'type': 'pon',
                 'consumed': consumed,
-                'tile': tile
+                'tile': tile,
+                'target': target
             }
         else:
             meld = {
                 'type': 'chi',
                 'consumed': consumed,
-                'tile': tile
+                'tile': tile,
+                'target': target
             }
     
     # print(f'check {player} meld result: ', meld)
