@@ -8,7 +8,6 @@ from screenshot import get_screenshot, set_debug_screenshot
 from util import concat_images_horizontal, find_contour, stable_func, timed
 from config import *
 from tile import check_tile
-from hand import rec_tsumo
 
 def crop_kawa_tile(player, pos, riichi_index = None):
     # 牌河最多3行，每行6张；超过3行(pos >= 18)的牌继续接在第3行末尾
@@ -139,9 +138,6 @@ def check_dahai_claimed():
 #     print(res)
 #     if res is not None and res[0] == '4z':
 #         save_img_q()
-# print(rec_tsumo())
-# if rec_tsumo() is not None:
-#     res = None
 # print(res)
 # for i in range(180):
 #     res = rec_dahai('next', 6, None)

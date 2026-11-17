@@ -101,8 +101,9 @@ def get_scores(screenshot):
     # cv2.waitKey(0)
     return [res1, res2, res3, res4]
 
-def rec_kyoku_info():
-    screenshot = get_screenshot(save=5)
+def rec_kyoku_info(shot=None):
+    """读开局信息。shot 不传则用当前截图（兼容原有调用点）。"""
+    screenshot = shot if shot is not None else get_screenshot(save=5)
     kyoku_info = {}
     kyoku_info['oya'] = get_oya(screenshot)
     kyoku_info['honba'] = get_honba(screenshot)
